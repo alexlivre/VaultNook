@@ -1,0 +1,117 @@
+import { z } from 'zod';
+
+export const Category = z.enum(['api', 'prompt', 'command', 'link']);
+export type Category = z.infer<typeof Category>;
+
+export const CategoryLabel: Record<Category, string> = {
+  api: 'APIs',
+  prompt: 'Prompts',
+  command: 'Commands',
+  link: 'Links',
+};
+
+export const CategoryIcon: Record<Category, string> = {
+  api: 'KeyRound',
+  prompt: 'MessageSquareText',
+  command: 'Terminal',
+  link: 'Link',
+};
+
+export const CategoryColor: Record<Category, string> = {
+  api: 'var(--color-category-api)',
+  prompt: 'var(--color-category-prompt)',
+  command: 'var(--color-category-command)',
+  link: 'var(--color-category-link)',
+};
+
+export const CategoryColorName: Record<Category, string> = {
+  api: 'category-api',
+  prompt: 'category-prompt',
+  command: 'category-command',
+  link: 'category-link',
+};
+
+export const ItemSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, 'Nome é obrigatório'),
+  value: z.string().min(1, 'Valor é obrigatório'),
+  description: z.string().default(''),
+  category: Category,
+  favorite: z.boolean().default(false),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export type Item = z.infer<typeof ItemSchema>;
+
+export const CreateItemSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório').max(200),
+  value: z.string().min(1, 'Valor é obrigatório'),
+  description: z.string().max(500).default(''),
+  category: Category,
+});
+export type CreateItem = z.infer<typeof CreateItemSchema>;
+
+export const EditItemSchema = CreateItemSchema.extend({
+  id: z.string(),
+});
+export type EditItem = z.infer<typeof EditItemSchema>;
+
+export const CreatePasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, 'Mínimo de 8 caracteres')
+      .regex(/[A-Z]/, 'Deve conter letra maiúscula')
+      .regex(/[a-z]/, 'Deve conter letra minúscula')
+      .regex(/[0-9]/, 'Deve conter número')
+      .regex(/[^A-Za-z0-9]/, 'Deve conter símbolo'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Senhas não conferem',
+    path: ['confirmPassword'],
+  });
+export type CreatePassword = z.infer<typeof CreatePasswordSchema>;
+
+export const UnlockSchema = z.object({
+  password: z.string().min(1, 'Senha é obrigatória'),
+});
+export type Unlock = z.infer<typeof UnlockSchema>;
+
+export const ChangePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Senha atual é obrigatória'),
+    newPassword: z
+      .string()
+      .min(8, 'Mínimo de 8 caracteres')
+      .regex(/[A-Z]/, 'Deve conter letra maiúscula')
+      .regex(/[a-z]/, 'Deve conter letra minúscula')
+      .regex(/[0-9]/, 'Deve conter número')
+      .regex(/[^A-Za-z0-9]/, 'Deve conter símbolo'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Senhas não conferem',
+    path: ['confirmPassword'],
+  });
+export type ChangePassword = z.infer<typeof ChangePasswordSchema>;
+
+export interface VaultInfo {
+  createdAt: number;
+  totalItems: number;
+  itemsByCategory: Record<Category, number>;
+  appVersion: string;
+}
+
+export interface ExportData {
+  version: string;
+  createdAt: number;
+  exportedAt: number;
+  items: Item[];
+}
+
+export interface ImportResult {
+  imported: number;
+  ignored: number;
+  total: number;
+}
