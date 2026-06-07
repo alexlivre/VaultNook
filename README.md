@@ -50,6 +50,13 @@
 
 | Funcionalidade | Descrição |
 |---------------|-----------|
+| **Múltiplos cofres** | Crie, gerencie e alterne entre vários cofres |
+| **Tela de seleção** | Interface inicial com cards para escolher o cofre |
+| **Ocultar cofre** | Esconda cofres da lista com um clique |
+| **Importar cofre** | Importe um vault de arquivo JSON como novo cofre |
+| **Exportar cofre** | Exporte qualquer cofre sem precisar desbloquear |
+| **Excluir cofre** | Remove permanentemente o cofre (requer senha) |
+| **Dica de senha** | Cadastre e visualize dicas na tela de desbloqueio |
 | **Exportar backup** | Salva todo o cofre em JSON (APIs criptografados) |
 | **Importar backup** | Restaura a partir de JSON, mesclando com existentes |
 | **Informações do cofre** | Estatísticas: total de itens, por categoria, versão |
@@ -65,6 +72,8 @@
 | **Notificações toast** | Feedback visual com opção de "Desfazer" |
 | **Estados vazios** | Mensagens contextuais para cada situação |
 | **Animações suaves** | Micro-interações a 60fps |
+| **Botões de janela** | Minimizar, maximizar e fechar customizados |
+| **Janela arrastável** | Titlebar customizada, arraste em qualquer lugar |
 
 ### Atalhos de Teclado
 
@@ -154,7 +163,8 @@ src/
 │   ├── handlers/ipc-handlers.ts     # 16 handlers IPC validados
 │   └── services/
 │       ├── crypto.ts                # PBKDF2, AES-256-GCM, zeroização
-│       └── vault.ts                 # CRUD, backup, troca de senha
+│       ├── vault.ts                 # CRUD, backup, troca de senha
+│       └── vault-registry.ts        # Registro de múltiplos cofres
 └── renderer/
     ├── App.tsx                      # Roteamento de telas
     ├── types/index.ts               # Schemas Zod + tipos
@@ -166,11 +176,13 @@ src/
     │   ├── ui/                      # 10+ componentes base
     │   ├── add-edit-item-dialog.tsx  # CRUD com gerador de senha
     │   ├── vault-settings-sheet.tsx  # Painel de configurações
-    │   └── toast-provider.tsx       # Sistema de notificações
+    │   ├── toast-provider.tsx       # Sistema de notificações
+    │   └── window-controls.tsx      # Botões de janela customizados
     └── pages/
-        ├── create-password-screen.tsx  # Primeiro acesso
-        ├── unlock-screen.tsx           # Desbloqueio
-        └── vault-screen.tsx            # Tela principal
+        ├── vault-manager-screen.tsx     # Seleção de cofres
+        ├── create-password-screen.tsx   # Criação de senha + dica
+        ├── unlock-screen.tsx            # Desbloqueio com dica
+        └── vault-screen.tsx             # Tela principal
 ```
 
 ---
@@ -206,7 +218,7 @@ PBKDF2 (600.000 iterações, SHA-256)
 
 ## 🗺️ Roadmap
 
-### v0.1.0-alpha ✅ (atual)
+### v0.1.0 ✅ (atual)
 - ✅ Autenticação com senha mestra
 - ✅ CRUD de itens com 4 categorias
 - ✅ Criptografia AES-256-GCM
@@ -216,17 +228,17 @@ PBKDF2 (600.000 iterações, SHA-256)
 - ✅ Auto-lock configurável
 - ✅ Paleta de comandos (Ctrl+K)
 - ✅ Tema escuro profissional
+- ✅ Múltiplos cofres
+- ✅ Tela de seleção de cofre
+- ✅ Dica de senha
+- ✅ Botões de janela customizados
 
 ### v0.2.0 🔜
-- Múltiplos cofres
-- Tela de seleção de cofre
-
-### v0.3.0
 - Tags e labels personalizáveis
 - Categorias customizáveis
 - Arrastar e soltar itens
 
-### v0.4.0
+### v0.3.0
 - Sincronização via Dropbox/OneDrive
 
 ### v1.0.0

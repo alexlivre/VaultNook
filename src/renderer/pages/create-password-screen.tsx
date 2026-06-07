@@ -5,14 +5,17 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Progress } from '../components/ui/progress';
 import { getPasswordStrength } from '../lib/utils';
+import { WindowControls } from '../components/window-controls';
 
 interface CreatePasswordScreenProps {
   onCreated: () => void;
 }
 
 export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
+  const [vaultName, setVaultName] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [hint, setHint] = React.useState('');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
@@ -32,6 +35,10 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
     e.preventDefault();
     setError('');
 
+    if (!vaultName.trim()) {
+      setError('Nome do vault é obrigatório');
+      return;
+    }
     if (!allMet) {
       setError('A senha não atende todos os requisitos');
       return;
@@ -44,7 +51,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
     setLoading(true);
     try {
       const api = (window as any).devVaultApi;
-      await api.createVault(password);
+      await api.createVault(password, vaultName.trim(), hint.trim());
       onCreated();
     } catch (err: any) {
       setError(err.message || 'Erro ao criar cofre');
@@ -54,20 +61,40 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-base p-8">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex min-h-screen flex-col bg-surface-base">
+      <header className="titlebar flex items-center justify-end h-11 shrink-0">
+        <WindowControls />
+      </header>
+      <div className="flex flex-1 items-center justify-center p-8">
+        <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-category-all/10">
             <Lock className="h-8 w-8 text-category-all" />
           </div>
           <h1 className="text-2xl font-semibold text-text-primary">DevVault</h1>
-          <p className="text-sm text-text-muted">Crie sua senha mestra</p>
+          <p className="text-sm text-text-muted">Crie seu novo cofre</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-4">
+            {/* Vault Name */}
+            <div className="space-y-2">
+              <Label htmlFor="vaultName">Nome do cofre</Label>
+              <Input
+                id="vaultName"
+                type="text"
+                placeholder="Meu Cofre"
+                value={vaultName}
+                onChange={(e) => {
+                  setVaultName(e.target.value);
+                  setError('');
+                }}
+                autoFocus
+              />
+            </div>
+
             {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">Nova senha</Label>
@@ -80,7 +107,6 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
                   setPassword(e.target.value);
                   setError('');
                 }}
-                autoFocus
               />
               {password.length > 0 && (
                 <div className="space-y-2 pt-1">
@@ -135,6 +161,18 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
                 <p className="text-xs text-destructive">As senhas não conferem</p>
               )}
             </div>
+
+            {/* Password Hint */}
+            <div className="space-y-2">
+              <Label htmlFor="hint">Dica de senha (opcional)</Label>
+              <Input
+                id="hint"
+                type="text"
+                placeholder="Ex: nome do meu primeiro cachorro"
+                value={hint}
+                onChange={(e) => setHint(e.target.value)}
+              />
+            </div>
           </div>
 
           {error && (
@@ -146,7 +184,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
           <Button
             type="submit"
             className="w-full h-10"
-            disabled={!allMet || !passwordsMatch || loading}
+            disabled={!vaultName.trim() || !allMet || !passwordsMatch || loading}
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -165,6 +203,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
             Sua senha mestra é irrecuperável. Mantenha-a em local seguro.
           </p>
         </form>
+        </div>
       </div>
     </div>
   );

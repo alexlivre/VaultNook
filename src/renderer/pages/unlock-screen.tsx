@@ -1,14 +1,19 @@
 import * as React from 'react';
-import { Lock, Shield } from 'lucide-react';
+import { Lock, Shield, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { WindowControls } from '../components/window-controls';
 
 interface UnlockScreenProps {
+  vaultId: string;
+  vaultName: string;
+  vaultHint: string;
   onUnlocked: () => void;
+  onBack: () => void;
 }
 
-export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
+export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack }: UnlockScreenProps) {
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -26,11 +31,12 @@ export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
 
     try {
       const api = (window as any).devVaultApi;
-      const result = await api.unlock(password);
-      // Store items in the Zustand store
+      const result = await api.unlock(password, vaultId);
       const { useVaultStore } = await import('../stores/vault-store');
       useVaultStore.getState().setItems(result.items);
       useVaultStore.getState().setAutoLockTimer(result.info?.settings?.autoLockTimer ?? 60);
+      useVaultStore.getState().setActiveVaultId(result.vaultId);
+      useVaultStore.getState().setActiveVaultName(vaultName);
       onUnlocked();
     } catch (err: any) {
       setAttempts((a) => a + 1);
@@ -42,14 +48,27 @@ export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-base p-8">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex min-h-screen flex-col bg-surface-base">
+      <header className="titlebar flex items-center justify-end h-11 shrink-0">
+        <WindowControls />
+      </header>
+      <div className="flex flex-1 items-center justify-center p-8">
+        <div className="w-full max-w-md space-y-8">
+        {/* Back button */}
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary cursor-pointer"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar aos cofres
+        </button>
+
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-category-all/10">
             <Lock className="h-8 w-8 text-category-all" />
           </div>
-          <h1 className="text-2xl font-semibold text-text-primary">DevVault</h1>
+          <h1 className="text-2xl font-semibold text-text-primary">{vaultName}</h1>
           <p className="text-sm text-text-muted">Digite sua senha mestra para desbloquear</p>
         </div>
 
@@ -70,6 +89,11 @@ export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
               className={error ? 'animate-shake border-destructive' : ''}
               autoFocus
             />
+            {vaultHint && (
+              <p className="text-xs text-text-muted mt-1">
+                💡 Dica: {vaultHint}
+              </p>
+            )}
           </div>
 
           {error && (
@@ -99,6 +123,7 @@ export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
             )}
           </Button>
         </form>
+        </div>
       </div>
     </div>
   );

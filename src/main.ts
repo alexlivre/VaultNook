@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { registerIpcHandlers } from './main/handlers/ipc-handlers';
@@ -40,10 +40,27 @@ const createWindow = () => {
   }
 
   // mainWindow.webContents.openDevTools();
+
+  // Notify renderer on maximize/unmaximize
+  mainWindow.on('maximize', () => mainWindow?.webContents.send('window:maximize-changed', true));
+  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:maximize-changed', false));
 };
+
+function registerWindowControls() {
+  ipcMain.on('window:minimize', () => mainWindow?.minimize());
+  ipcMain.on('window:maximize', () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow?.maximize();
+    }
+  });
+  ipcMain.on('window:close', () => mainWindow?.close());
+}
 
 app.whenReady().then(() => {
   registerIpcHandlers();
+  registerWindowControls();
   createWindow();
 });
 

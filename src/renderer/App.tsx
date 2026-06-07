@@ -4,28 +4,56 @@ import { ToastContextProvider } from './components/toast-provider';
 import { CreatePasswordScreen } from './pages/create-password-screen';
 import { UnlockScreen } from './pages/unlock-screen';
 import { VaultScreen } from './pages/vault-screen';
+import { VaultManagerScreen } from './pages/vault-manager-screen';
 
 export function App() {
-  const { screen, setScreen, isFirstRun, setIsFirstRun, setIsLocked, setItems } =
-    useVaultStore();
+  const {
+    screen,
+    setScreen,
+    setVaults,
+    setActiveVaultId,
+    setActiveVaultName,
+    setIsLocked,
+    setItems,
+  } = useVaultStore();
+
+  const [unlockVaultId, setUnlockVaultId] = React.useState<string | null>(null);
+  const [unlockVaultName, setUnlockVaultName] = React.useState('');
+  const [unlockVaultHint, setUnlockVaultHint] = React.useState('');
 
   React.useEffect(() => {
     async function init() {
       try {
         const api = (window as any).devVaultApi;
         const result = await api.init();
-        setIsFirstRun(result.isFirstRun);
-        if (result.isFirstRun) {
-          setScreen('create-password');
-        } else {
-          setScreen('unlock');
-        }
+        setVaults(result.vaults);
+        setScreen('vault-manager');
       } catch {
-        setScreen('unlock');
+        setScreen('vault-manager');
       }
     }
     init();
-  }, [setIsFirstRun, setScreen]);
+  }, [setVaults, setScreen]);
+
+  const handleSelectVault = React.useCallback(async (vaultId: string) => {
+    try {
+      const api = (window as any).devVaultApi;
+      const hint = await api.getVaultHint(vaultId);
+      // Find vault name from store
+      const store = useVaultStore.getState();
+      const vault = store.vaults.find((v) => v.id === vaultId);
+      setUnlockVaultId(vaultId);
+      setUnlockVaultName(vault?.name || 'Vault');
+      setUnlockVaultHint(hint);
+      setScreen('unlock');
+    } catch {
+      setScreen('vault-manager');
+    }
+  }, [setScreen]);
+
+  const handleCreateVault = React.useCallback(() => {
+    setScreen('create-password');
+  }, [setScreen]);
 
   const handleCreated = React.useCallback(() => {
     setScreen('vault');
@@ -37,10 +65,31 @@ export function App() {
     setIsLocked(false);
   }, [setScreen, setIsLocked]);
 
+  const handleBackToManager = React.useCallback(() => {
+    setUnlockVaultId(null);
+    setUnlockVaultName('');
+    setUnlockVaultHint('');
+    setScreen('vault-manager');
+  }, [setScreen]);
+
   return (
     <ToastContextProvider>
+      {screen === 'vault-manager' && (
+        <VaultManagerScreen
+          onSelectVault={handleSelectVault}
+          onCreateVault={handleCreateVault}
+        />
+      )}
       {screen === 'create-password' && <CreatePasswordScreen onCreated={handleCreated} />}
-      {screen === 'unlock' && <UnlockScreen onUnlocked={handleUnlocked} />}
+      {screen === 'unlock' && unlockVaultId && (
+        <UnlockScreen
+          vaultId={unlockVaultId}
+          vaultName={unlockVaultName}
+          vaultHint={unlockVaultHint}
+          onUnlocked={handleUnlocked}
+          onBack={handleBackToManager}
+        />
+      )}
       {screen === 'vault' && <VaultScreen />}
       {screen === 'loading' && (
         <div className="flex min-h-screen items-center justify-center bg-surface-base">

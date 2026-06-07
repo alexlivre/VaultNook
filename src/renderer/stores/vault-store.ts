@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import type { Item, Category, VaultInfo, ExportData, ImportResult, CreateItem, EditItem, ChangePassword } from '../types';
+import type { Item, Category, VaultInfo, ExportData, ImportResult, CreateItem, EditItem, ChangePassword, VaultEntry } from '../types';
 
-export type AppScreen = 'loading' | 'create-password' | 'unlock' | 'vault';
+export type AppScreen = 'loading' | 'vault-manager' | 'create-password' | 'unlock' | 'vault';
 export type AutoLockOption = 30 | 60 | 300 | 900 | 0;
 
 interface VaultState {
@@ -9,6 +9,11 @@ interface VaultState {
   screen: AppScreen;
   isLocked: boolean;
   isFirstRun: boolean;
+
+  // Vaults
+  vaults: VaultEntry[];
+  activeVaultId: string | null;
+  activeVaultName: string;
 
   // Data
   items: Item[];
@@ -29,6 +34,9 @@ interface VaultState {
   setScreen: (screen: AppScreen) => void;
   setIsLocked: (locked: boolean) => void;
   setIsFirstRun: (first: boolean) => void;
+  setVaults: (vaults: VaultEntry[]) => void;
+  setActiveVaultId: (id: string | null) => void;
+  setActiveVaultName: (name: string) => void;
   setItems: (items: Item[]) => void;
   addItem: (item: Item) => void;
   updateItem: (item: Item) => void;
@@ -54,6 +62,11 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   isLocked: true,
   isFirstRun: false,
 
+  // Vaults
+  vaults: [],
+  activeVaultId: null,
+  activeVaultName: '',
+
   // Data
   items: [],
   activeCategory: 'all',
@@ -73,6 +86,9 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   setScreen: (screen) => set({ screen }),
   setIsLocked: (locked) => set({ isLocked: locked }),
   setIsFirstRun: (first) => set({ isFirstRun: first }),
+  setVaults: (vaults) => set({ vaults }),
+  setActiveVaultId: (id) => set({ activeVaultId: id }),
+  setActiveVaultName: (name) => set({ activeVaultName: name }),
   setItems: (items) => set({ items }),
   addItem: (item) => set((state) => ({ items: [...state.items, item] })),
   updateItem: (item) =>

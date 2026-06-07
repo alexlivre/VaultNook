@@ -31,6 +31,7 @@ import type { Category, Item } from '../types';
 import { CategoryColorName, CategoryLabel } from '../types';
 import { AddEditItemDialog } from '../components/add-edit-item-dialog';
 import { VaultSettingsSheet } from '../components/vault-settings-sheet';
+import { WindowControls } from '../components/window-controls';
 
 const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; color: string }[] = [
   { id: 'all', label: 'Tudo', icon: LayoutGrid, color: 'text-category-all' },
@@ -49,6 +50,7 @@ export function VaultScreen() {
     selectedItemIds,
     revealedItemIds,
     isLocked,
+    activeVaultName,
     setActiveCategory,
     setSearchQuery,
     setFavoritesFirst,
@@ -93,7 +95,7 @@ export function VaultScreen() {
       const api = (window as any).devVaultApi;
       await api.lock();
       setIsLocked(true);
-      setScreen('unlock');
+      setScreen('vault-manager');
     } catch {
       // silent
     }
@@ -172,12 +174,14 @@ export function VaultScreen() {
         className="flex h-screen flex-col bg-surface-base overflow-hidden"
       >
         {/* Titlebar */}
-        <header className="titlebar flex items-center justify-between border-b border-border-default px-4 h-11 shrink-0">
+        <header className="titlebar flex items-center justify-between border-b border-border-default pl-4 pr-0 h-11 shrink-0">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-category-all" />
-            <span className="text-sm font-medium text-text-primary">DevVault</span>
+            <span className="text-sm font-medium text-text-primary">
+              {activeVaultName || 'DevVault'}
+            </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-stretch h-full gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -218,6 +222,7 @@ export function VaultScreen() {
               <TooltipContent>Travar (Ctrl+L)</TooltipContent>
             </Tooltip>
           </div>
+          <WindowControls />
         </header>
 
         {/* Category Tabs */}

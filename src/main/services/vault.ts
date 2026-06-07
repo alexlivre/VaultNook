@@ -21,6 +21,7 @@ interface VaultData {
   passwordHash: string;
   salt: string;
   recoveryHash: string;
+  hint: string;
   items: StoredItem[];
   settings: {
     autoLockTimer: number;
@@ -41,10 +42,16 @@ interface StoredItem {
 let vaultKey: VaultKey | null = null;
 let vaultPath: string;
 let vaultData: VaultData | null = null;
+let activeVaultId: string | null = null;
 
-function getVaultPath(): string {
-  const userDataPath = app.getPath('userData');
-  return join(userDataPath, 'vault.json');
+function getVaultPath(vaultId?: string): string {
+  if (vaultId) {
+    return join(app.getPath('userData'), 'vaults', `${vaultId}.json`);
+  }
+  if (activeVaultId) {
+    return join(app.getPath('userData'), 'vaults', `${activeVaultId}.json`);
+  }
+  return join(app.getPath('userData'), 'vault.json');
 }
 
 export function getVaultExists(): boolean {
@@ -52,8 +59,35 @@ export function getVaultExists(): boolean {
   return existsSync(vaultPath);
 }
 
-export function createVault(password: string): { recoveryPhrase: string[] } {
-  vaultPath = getVaultPath();
+export function vaultExists(vaultId: string): boolean {
+  return existsSync(getVaultPath(vaultId));
+}
+
+export function loadVault(vaultId: string): boolean {
+  const path = getVaultPath(vaultId);
+  if (!existsSync(path)) return false;
+
+  vaultPath = path;
+  const raw = readFileSync(path, 'utf-8');
+  vaultData = JSON.parse(raw);
+  activeVaultId = vaultId;
+  vaultKey = null;
+  return true;
+}
+
+export function createVault(password: string, hint: string = ''): { recoveryPhrase: string[]; vaultId: string } {
+  saveVaultId();
+  
+  // Create vaults directory if needed
+  const vaultsDir = join(app.getPath('userData'), 'vaults');
+  if (!existsSync(vaultsDir)) {
+    mkdirSync(vaultsDir, { recursive: true });
+  }
+
+  const id = activeVaultId || crypto.randomUUID();
+  activeVaultId = id;
+  vaultPath = getVaultPath(id);
+
   const salt = generateSalt();
   const hash = hashPassword(password, salt);
   const recoveryPhrase = generateRecoveryPhrase();
@@ -65,24 +99,20 @@ export function createVault(password: string): { recoveryPhrase: string[] } {
     passwordHash: hash.toString('base64'),
     salt: salt.toString('base64'),
     recoveryHash: recoveryHash.toString('base64'),
+    hint,
     items: [],
     settings: {
       autoLockTimer: 60,
     },
   };
 
-  const dir = join(vaultPath, '..');
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
   saveVault();
   vaultKey = deriveKey(password, salt);
 
-  return { recoveryPhrase };
+  return { recoveryPhrase, vaultId: id };
 }
 
 export function unlockVault(password: string): boolean {
-  vaultPath = getVaultPath();
   if (!existsSync(vaultPath)) return false;
 
   const raw = readFileSync(vaultPath, 'utf-8');
@@ -105,6 +135,11 @@ export function lockVault(): void {
     vaultKey = null;
   }
   vaultData = null;
+  activeVaultId = null;
+}
+
+export function getActiveVaultId(): string | null {
+  return activeVaultId;
 }
 
 export function changePassword(data: ChangePassword): boolean {
@@ -146,11 +181,11 @@ export function changePassword(data: ChangePassword): boolean {
   return true;
 }
 
-export function deleteVault(): void {
+export function deleteVault(vaultId: string): void {
   lockVault();
-  vaultPath = getVaultPath();
-  if (existsSync(vaultPath)) {
-    unlinkSync(vaultPath);
+  const path = getVaultPath(vaultId);
+  if (existsSync(path)) {
+    unlinkSync(path);
   }
 }
 
@@ -227,6 +262,12 @@ export function exportVault(): string {
   );
 }
 
+export function exportVaultRaw(vaultId: string): string | null {
+  const path = getVaultPath(vaultId);
+  if (!existsSync(path)) return null;
+  return readFileSync(path, 'utf-8');
+}
+
 export function importVault(jsonData: string): { imported: number; ignored: number; total: number } {
   if (!vaultData) return { imported: 0, ignored: 0, total: 0 };
   try {
@@ -270,7 +311,35 @@ export function getAutoLockTimer(): number {
   return vaultData?.settings.autoLockTimer ?? 60;
 }
 
+export function getVaultMetadata(vaultId: string): { totalItems: number; itemsByCategory: Record<string, number> } | null {
+  const path = getVaultPath(vaultId);
+  if (!existsSync(path)) return null;
+  try {
+    const raw = readFileSync(path, 'utf-8');
+    const data = JSON.parse(raw);
+    const itemsByCategory: Record<string, number> = {
+      api: 0,
+      prompt: 0,
+      command: 0,
+      link: 0,
+    };
+    (data.items || []).forEach((item: any) => {
+      itemsByCategory[item.category] = (itemsByCategory[item.category] || 0) + 1;
+    });
+    return {
+      totalItems: data.items?.length || 0,
+      itemsByCategory,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function saveVault(): void {
-  if (!vaultData) return;
+  if (!vaultData || !vaultPath) return;
   writeFileSync(vaultPath, JSON.stringify(vaultData, null, 2), 'utf-8');
+}
+
+function saveVaultId(): void {
+  // Used only to set up vaultId from context before createVault
 }

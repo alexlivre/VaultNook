@@ -66,6 +66,8 @@ export const CreatePasswordSchema = z
       .regex(/[0-9]/, 'Deve conter número')
       .regex(/[^A-Za-z0-9]/, 'Deve conter símbolo'),
     confirmPassword: z.string(),
+    name: z.string().min(1, 'Nome do vault é obrigatório'),
+    hint: z.string().optional().default(''),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Senhas não conferem',
@@ -75,6 +77,7 @@ export type CreatePassword = z.infer<typeof CreatePasswordSchema>;
 
 export const UnlockSchema = z.object({
   password: z.string().min(1, 'Senha é obrigatória'),
+  vaultId: z.string().min(1),
 });
 export type Unlock = z.infer<typeof UnlockSchema>;
 
@@ -114,4 +117,14 @@ export interface ImportResult {
   imported: number;
   ignored: number;
   total: number;
+}
+
+export interface VaultEntry {
+  id: string;
+  name: string;
+  createdAt: number;
+  lastOpened: number;
+  hidden: boolean;
+  hasHint: boolean;
+  itemCount: number;
 }
