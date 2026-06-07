@@ -106,10 +106,24 @@ npm start
 | Comando | Descrição |
 |---------|-----------|
 | `npm start` | Inicia o app em modo desenvolvimento |
-| `npm run package` | Empacota o app para o sistema atual |
+| `npm run package` | Empacota o app para o sistema atual (portátil) |
 | `npm run make` | Gera instaladores (Windows/macOS/Linux) |
 | `npm run publish` | Publica uma release |
 | `npm run lint` | Verifica qualidade do código |
+
+### Executável
+
+```bash
+# Gera uma pasta portátil com o app (sem instalação)
+# Saída: out/DevVault-win32-x64/
+npm run package
+
+# Gera um instalador (Windows: .exe Squirrel, macOS: .dmg, Linux: .deb/.rpm)
+# Saída: out/make/
+npm run make
+```
+
+Depois de rodar `npm run make` no Windows, o instalador estará em `out/make/squirrel.windows/x64/`. Você pode executar o `.exe` diretamente ou instalar o app pelo instalador gerado.
 
 ---
 
