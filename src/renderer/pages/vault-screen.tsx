@@ -577,7 +577,6 @@ export function VaultScreen() {
             <TooltipTrigger asChild>
               <Button
                 variant="primary"
-                size="lg"
                 className="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow"
                 onClick={() => {
                   setAddDialogOpen(true);
