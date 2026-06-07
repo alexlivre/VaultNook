@@ -55,9 +55,9 @@ export function getVault(id: string): VaultRegistryEntry | undefined {
   return registry?.vaults.find((v) => v.id === id);
 }
 
-export function addVault(name: string, hint: string): VaultRegistryEntry {
+export function addVault(name: string, hint: string, vaultId?: string): VaultRegistryEntry {
   if (!registry) loadRegistry();
-  const id = crypto.randomUUID();
+  const id = vaultId || crypto.randomUUID();
   const entry: VaultRegistryEntry = {
     id,
     name,

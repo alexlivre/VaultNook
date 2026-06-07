@@ -92,8 +92,8 @@ export function registerIpcHandlers(): void {
       data
     );
     const result = vault.createVault(password, hint);
-    // Add to registry
-    registry.addVault(name, hint);
+    // Add to registry with the same vaultId from the file
+    registry.addVault(name, hint, result.vaultId);
     return result;
   });
 
