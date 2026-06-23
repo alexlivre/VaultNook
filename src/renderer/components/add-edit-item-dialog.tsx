@@ -67,7 +67,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
 
     setLoading(true);
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       if (editItem) {
         await api.editItem({ id: editItem.id, name: name.trim(), value: value.trim(), description: description.trim(), category });
       } else {

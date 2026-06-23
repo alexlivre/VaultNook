@@ -1,4 +1,4 @@
-import { randomBytes, pbkdf2Sync, createCipheriv, createDecipheriv } from 'crypto';
+import { randomBytes, pbkdf2Sync, createCipheriv, createDecipheriv, randomInt } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
@@ -108,7 +108,7 @@ export function generateRecoveryPhrase(): string[] {
   const selected: string[] = [];
   const used = new Set<number>();
   while (selected.length < 12) {
-    const idx = Math.floor(Math.random() * words.length);
+    const idx = randomInt(words.length);
     if (!used.has(idx)) {
       used.add(idx);
       selected.push(words[idx]);

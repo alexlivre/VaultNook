@@ -1,35 +1,12 @@
 import { ipcMain, dialog, app } from 'electron';
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFile, readFile } from 'fs/promises';
+import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
 import * as vault from '../services/vault';
 import * as registry from '../services/vault-registry';
+import { IPC_CHANNELS } from '../../ipc-channels';
 import { CreateItemSchema, EditItemSchema, ChangePasswordSchema } from '../../renderer/types';
-
-const IPC_CHANNELS = {
-  INIT: 'vault:init',
-  LIST_VAULTS: 'vault:list-vaults',
-  CREATE_PASSWORD: 'vault:create-password',
-  UNLOCK: 'vault:unlock',
-  LOCK: 'vault:lock',
-  CHANGE_PASSWORD: 'vault:change-password',
-  DELETE_VAULT: 'vault:delete-vault',
-  DELETE_VAULT_ENTRY: 'vault:delete-vault-entry',
-  GET_INFO: 'vault:get-info',
-  GET_ITEMS: 'vault:get-items',
-  ADD_ITEM: 'vault:add-item',
-  EDIT_ITEM: 'vault:edit-item',
-  REMOVE_ITEM: 'vault:remove-item',
-  EXPORT: 'vault:export',
-  IMPORT: 'vault:import',
-  EXPORT_FILE: 'vault:export-file',
-  IMPORT_FILE: 'vault:import-file',
-  TOGGLE_FAVORITE: 'vault:toggle-favorite',
-  GET_SETTINGS: 'vault:get-settings',
-  SAVE_SETTINGS: 'vault:save-settings',
-  GET_VAULT_HINT: 'vault:get-vault-hint',
-  TOGGLE_HIDDEN: 'vault:toggle-hidden',
-} as const;
 
 const DeleteVaultSchema = z.object({
   password: z.string().min(1),
@@ -49,6 +26,13 @@ const SaveSettingsSchema = z.object({
   autoLockTimer: z.number().min(0).max(900),
 });
 
+const ImportedVaultSchema = z.object({
+  version: z.string(),
+  passwordHash: z.string(),
+  salt: z.string(),
+  items: z.array(z.any()),
+});
+
 function validate<T>(schema: z.ZodType<T>, data: unknown): T {
   const result = schema.safeParse(data);
   if (!result.success) {
@@ -58,18 +42,16 @@ function validate<T>(schema: z.ZodType<T>, data: unknown): T {
 }
 
 export function registerIpcHandlers(): void {
-  ipcMain.handle(IPC_CHANNELS.INIT, () => {
-    // Try to migrate old vault first
-    const migratedId = registry.migrateOldVault();
-    const vaults = registry.loadRegistry();
+  ipcMain.handle(IPC_CHANNELS.INIT, async () => {
+    const migratedId = await registry.migrateOldVault();
+    const vaults = await registry.loadRegistry();
     return { vaults };
   });
 
-  ipcMain.handle(IPC_CHANNELS.LIST_VAULTS, () => {
-    const entries = registry.listAllVaults();
-    // Attach item count to each vault
-    return entries.map((entry) => {
-      const meta = vault.getVaultMetadata(entry.id);
+  ipcMain.handle(IPC_CHANNELS.LIST_VAULTS, async () => {
+    const entries = await registry.listAllVaults();
+    return Promise.all(entries.map(async (entry) => {
+      const meta = await vault.getVaultMetadata(entry.id);
       return {
         id: entry.id,
         name: entry.name,
@@ -79,10 +61,10 @@ export function registerIpcHandlers(): void {
         hasHint: entry.hint.length > 0,
         itemCount: meta?.totalItems || 0,
       };
-    });
+    }));
   });
 
-  ipcMain.handle(IPC_CHANNELS.CREATE_PASSWORD, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.CREATE_PASSWORD, async (_event, data: unknown) => {
     const { password, name, hint } = validate(
       z.object({
         password: z.string().min(8),
@@ -91,13 +73,12 @@ export function registerIpcHandlers(): void {
       }),
       data
     );
-    const result = vault.createVault(password, hint);
-    // Add to registry with the same vaultId from the file
-    registry.addVault(name, hint, result.vaultId);
+    const result = await vault.createVault(password, hint);
+    await registry.addVault(name, hint, result.vaultId);
     return result;
   });
 
-  ipcMain.handle(IPC_CHANNELS.UNLOCK, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.UNLOCK, async (_event, data: unknown) => {
     const { password, vaultId } = validate(
       z.object({
         password: z.string().min(1),
@@ -105,58 +86,55 @@ export function registerIpcHandlers(): void {
       }),
       data
     );
-    // Load the vault file
-    const loaded = vault.loadVault(vaultId);
+    const loaded = await vault.loadVault(vaultId);
     if (!loaded) throw new Error('Vault não encontrado');
-    const success = vault.unlockVault(password);
+    const success = await vault.unlockVault(password);
     if (!success) throw new Error('Senha incorreta');
-    // Update last opened
-    registry.updateVault(vaultId, { lastOpened: Date.now() });
-    return { items: vault.getAllItems(), info: vault.getVaultInfo(), vaultId };
+    await registry.updateVault(vaultId, { lastOpened: Date.now() });
+    return { items: await vault.getAllItems(), info: await vault.getVaultInfo(), vaultId };
   });
 
-  ipcMain.handle(IPC_CHANNELS.LOCK, () => {
+  ipcMain.handle(IPC_CHANNELS.LOCK, async () => {
     vault.lockVault();
     return true;
   });
 
-  ipcMain.handle(IPC_CHANNELS.CHANGE_PASSWORD, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.CHANGE_PASSWORD, async (_event, data: unknown) => {
     const validated = validate(ChangePasswordSchema, data);
-    const success = vault.changePassword(validated);
+    const success = await vault.changePassword(validated);
     if (!success) throw new Error('Senha atual incorreta');
     return true;
   });
 
-  ipcMain.handle(IPC_CHANNELS.DELETE_VAULT, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.DELETE_VAULT, async (_event, data: unknown) => {
     const { password } = validate(DeleteVaultSchema, data);
     const vaultId = vault.getActiveVaultId();
     if (!vaultId) throw new Error('Nenhum vault ativo');
-    const canUnlock = vault.unlockVault(password);
+    const canUnlock = await vault.unlockVault(password);
     if (!canUnlock) throw new Error('Senha incorreta');
-    vault.deleteVault(vaultId);
+    await vault.deleteVault(vaultId);
     return true;
   });
 
-  ipcMain.handle(IPC_CHANNELS.DELETE_VAULT_ENTRY, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.DELETE_VAULT_ENTRY, async (_event, data: unknown) => {
     const { vaultId, password } = validate(DeleteVaultEntrySchema, data);
-    // Verify password before deleting
-    vault.loadVault(vaultId);
-    const canUnlock = vault.unlockVault(password);
+    await vault.loadVault(vaultId);
+    const canUnlock = await vault.unlockVault(password);
     if (!canUnlock) throw new Error('Senha incorreta');
-    vault.deleteVault(vaultId);
-    registry.removeVault(vaultId);
+    await vault.deleteVault(vaultId);
+    await registry.removeVault(vaultId);
     return true;
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_INFO, () => {
+  ipcMain.handle(IPC_CHANNELS.GET_INFO, async () => {
     return vault.getVaultInfo();
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_ITEMS, () => {
+  ipcMain.handle(IPC_CHANNELS.GET_ITEMS, async () => {
     return vault.getAllItems();
   });
 
-  ipcMain.handle(IPC_CHANNELS.ADD_ITEM, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.ADD_ITEM, async (_event, data: unknown) => {
     const validated = validate(CreateItemSchema, data);
     const item = {
       ...validated,
@@ -165,36 +143,36 @@ export function registerIpcHandlers(): void {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    vault.addItem(item);
+    await vault.addItem(item);
     return item;
   });
 
-  ipcMain.handle(IPC_CHANNELS.EDIT_ITEM, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.EDIT_ITEM, async (_event, data: unknown) => {
     const validated = validate(EditItemSchema, data);
-    const items = vault.getAllItems();
+    const items = await vault.getAllItems();
     const existing = items.find((i) => i.id === validated.id);
     const fullItem = existing
       ? { ...existing, ...validated, updatedAt: Date.now() }
       : { ...validated, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
-    vault.editItem(fullItem);
+    await vault.editItem(fullItem);
     return fullItem;
   });
 
-  ipcMain.handle(IPC_CHANNELS.REMOVE_ITEM, (_event, id: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.REMOVE_ITEM, async (_event, id: unknown) => {
     const validated = validate(z.string(), id);
-    vault.removeItem(validated);
+    await vault.removeItem(validated);
     return true;
   });
 
   ipcMain.handle(IPC_CHANNELS.EXPORT, async () => {
-    const data = vault.exportVault();
+    const data = await vault.exportVault();
     const result = await dialog.showSaveDialog({
       title: 'Exportar Vault',
       defaultPath: `devvault-backup-${Date.now()}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {
-      writeFileSync(result.filePath, data, 'utf-8');
+      await writeFile(result.filePath, data, 'utf-8');
       return true;
     }
     return false;
@@ -207,7 +185,7 @@ export function registerIpcHandlers(): void {
       properties: ['openFile'],
     });
     if (!result.canceled && result.filePaths[0]) {
-      const data = readFileSync(result.filePaths[0], 'utf-8');
+      const data = await readFile(result.filePaths[0], 'utf-8');
       return vault.importVault(data);
     }
     return null;
@@ -215,7 +193,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.EXPORT_FILE, async (_event, vaultId: unknown) => {
     const id = validate(z.string().min(1), vaultId);
-    const raw = vault.exportVaultRaw(id);
+    const raw = await vault.exportVaultRaw(id);
     if (!raw) throw new Error('Vault não encontrado');
     const result = await dialog.showSaveDialog({
       title: 'Exportar Vault',
@@ -223,7 +201,7 @@ export function registerIpcHandlers(): void {
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {
-      writeFileSync(result.filePath, raw, 'utf-8');
+      await writeFile(result.filePath, raw, 'utf-8');
       return true;
     }
     return false;
@@ -236,52 +214,53 @@ export function registerIpcHandlers(): void {
       properties: ['openFile'],
     });
     if (!result.canceled && result.filePaths[0]) {
-      const raw = readFileSync(result.filePaths[0], 'utf-8');
+      const raw = await readFile(result.filePaths[0], 'utf-8');
       const data = JSON.parse(raw);
+      const validated = validate(ImportedVaultSchema, data);
       const name = `Importado ${new Date().toLocaleDateString()}`;
       const vaultId = crypto.randomUUID();
       const vaultsDir = join(app.getPath('userData'), 'vaults');
       if (!existsSync(vaultsDir)) {
         mkdirSync(vaultsDir, { recursive: true });
       }
-      writeFileSync(join(vaultsDir, `${vaultId}.json`), raw, 'utf-8');
-      registry.addVault(name, '');
+      await writeFile(join(vaultsDir, `${vaultId}.json`), JSON.stringify(validated), 'utf-8');
+      await registry.addVault(name, '', vaultId);
       return { id: vaultId, name };
     }
     return null;
   });
 
-  ipcMain.handle(IPC_CHANNELS.TOGGLE_FAVORITE, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.TOGGLE_FAVORITE, async (_event, data: unknown) => {
     const { id, favorite } = validate(ToggleFavoriteSchema, data);
-    const items = vault.getAllItems();
+    const items = await vault.getAllItems();
     const item = items.find((i) => i.id === id);
     if (item) {
-      vault.editItem({ ...item, favorite });
+      await vault.editItem({ ...item, favorite });
     }
     return true;
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_SETTINGS, () => {
-    const timer = vault.getAutoLockTimer();
+  ipcMain.handle(IPC_CHANNELS.GET_SETTINGS, async () => {
+    const timer = await vault.getAutoLockTimer();
     return { autoLockTimer: timer };
   });
 
-  ipcMain.handle(IPC_CHANNELS.SAVE_SETTINGS, (_event, data: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.SAVE_SETTINGS, async (_event, data: unknown) => {
     const { autoLockTimer } = validate(SaveSettingsSchema, data);
-    vault.saveAutoLockTimer(autoLockTimer);
+    await vault.saveAutoLockTimer(autoLockTimer);
     return true;
   });
 
-  ipcMain.handle(IPC_CHANNELS.GET_VAULT_HINT, (_event, vaultId: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.GET_VAULT_HINT, async (_event, vaultId: unknown) => {
     const id = validate(z.string().min(1), vaultId);
     return registry.getVaultHint(id);
   });
 
-  ipcMain.handle(IPC_CHANNELS.TOGGLE_HIDDEN, (_event, vaultId: unknown) => {
+  ipcMain.handle(IPC_CHANNELS.TOGGLE_HIDDEN, async (_event, vaultId: unknown) => {
     const id = validate(z.string().min(1), vaultId);
-    const entry = registry.getVault(id);
+    const entry = await registry.getVault(id);
     if (!entry) throw new Error('Vault não encontrado');
-    registry.updateVault(id, { hidden: !entry.hidden });
+    await registry.updateVault(id, { hidden: !entry.hidden });
     return !entry.hidden;
   });
 }

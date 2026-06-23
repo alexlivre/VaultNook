@@ -5,33 +5,27 @@ import {
   Terminal,
   Link,
   LayoutGrid,
-  Search,
   Plus,
-  Star,
   Lock,
-  MoreHorizontal,
-  Copy,
-  Check,
-  Eye,
-  EyeOff,
-  Trash2,
-  Pencil,
+  Search,
   LogOut,
   Settings,
   Command,
+  Copy,
 } from 'lucide-react';
 import { useVaultStore } from '../stores/vault-store';
 import { useToast } from '../components/toast-provider';
 import { useAutoLock, useKeyboardShortcuts } from '../lib/hooks';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../components/ui/tooltip';
-import { cn, maskValue, truncateValue, formatDate } from '../lib/utils';
+import { cn } from '../lib/utils';
 import type { Category, Item } from '../types';
-import { CategoryColorName, CategoryLabel } from '../types';
 import { AddEditItemDialog } from '../components/add-edit-item-dialog';
 import { VaultSettingsSheet } from '../components/vault-settings-sheet';
 import { WindowControls } from '../components/window-controls';
+import { ItemCard } from '../components/item-card';
+import { CommandPalette } from '../components/command-palette';
+import { VaultToolbar } from '../components/vault-toolbar';
 
 const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; color: string }[] = [
   { id: 'all', label: 'Tudo', icon: LayoutGrid, color: 'text-category-all' },
@@ -74,7 +68,10 @@ export function VaultScreen() {
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
-  const displayItems = filteredItems();
+  const displayItems = React.useMemo(
+    () => filteredItems(),
+    [items, activeCategory, searchQuery, favoritesFirst]
+  );
 
   const handleCopy = React.useCallback(
     async (value: string, itemId: string) => {
@@ -92,7 +89,7 @@ export function VaultScreen() {
 
   const handleLock = React.useCallback(async () => {
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       await api.lock();
       setIsLocked(true);
       setScreen('vault-manager');
@@ -105,7 +102,7 @@ export function VaultScreen() {
     'new-item': () => setAddDialogOpen(true),
     search: () => searchInputRef.current?.focus(),
     export: async () => {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       const result = await api.exportVault();
       if (result) toast({ title: 'Vault exportado com sucesso', variant: 'success' });
     },
@@ -135,7 +132,7 @@ export function VaultScreen() {
   const handleDelete = React.useCallback(
     async (id: string, name: string) => {
       try {
-        const api = (window as any).devVaultApi;
+        const api = window.devVaultApi;
         await api.removeItem(id);
         removeItem(id);
         toast({
@@ -158,7 +155,7 @@ export function VaultScreen() {
     async (id: string, current: boolean) => {
       toggleFavorite(id);
       try {
-        const api = (window as any).devVaultApi;
+        const api = window.devVaultApi;
         await api.toggleFavorite(id, !current);
       } catch {
         toggleFavorite(id);
@@ -277,41 +274,13 @@ export function VaultScreen() {
         />
 
         {/* Search + Filters */}
-        <div className="flex items-center gap-2 px-4 py-2 shrink-0">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            <Input
-              ref={searchInputRef}
-              placeholder="Buscar itens... (cat:api termo para filtrar)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-sm"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary cursor-pointer"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn('h-8 w-8', favoritesFirst && 'text-category-all')}
-                onClick={() => setFavoritesFirst(!favoritesFirst)}
-              >
-                <Star className={cn('h-4 w-4', favoritesFirst && 'fill-current')} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {favoritesFirst ? 'Mostrar ordem normal' : 'Favoritos primeiro'}
-            </TooltipContent>
-          </Tooltip>
-        </div>
+        <VaultToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          favoritesFirst={favoritesFirst}
+          onToggleFavoritesFirst={() => setFavoritesFirst(!favoritesFirst)}
+          searchInputRef={searchInputRef}
+        />
 
         {/* Bulk action bar */}
         {selectedItemIds.size > 0 && (
@@ -391,187 +360,23 @@ export function VaultScreen() {
             </div>
           ) : (
             <div className="space-y-1 py-1">
-              {displayItems.map((item, index) => {
-                const isSelected = selectedItemIds.has(item.id);
-                const isRevealed = revealedItemIds.has(item.id);
-                const isCopied = copiedId === item.id;
-                const colorClass = CategoryColorName[item.category];
-
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'group flex items-center gap-3 rounded-lg border border-border-default bg-surface-raised px-3 py-2.5 transition-all duration-150 cursor-pointer animate-fade-in-up',
-                      isSelected && 'border-category-all/50 bg-category-all/5',
-                      !isSelected && 'hover:bg-surface-hover hover:shadow-sm'
-                    )}
-                    style={{
-                      borderLeftWidth: '3px',
-                      borderLeftColor: item.favorite
-                        ? 'var(--color-category-all)'
-                        : `var(--color-category-${colorClass})`,
-                      animationDelay: `${Math.min(index * 20, 300)}ms`,
-                    }}
-                    onClick={(e) => {
-                      if (e.ctrlKey || e.metaKey) {
-                        toggleItemSelection(item.id);
-                      } else {
-                        handleCopy(item.value, item.id);
-                      }
-                      handleActivity();
-                    }}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      // Could show a context menu here
-                    }}
-                  >
-                    {/* Category icon */}
-                    <div
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md"
-                      style={{
-                        backgroundColor: `color-mix(in srgb, var(--color-category-${colorClass}) 15%, transparent)`,
-                      }}
-                    >
-                      {item.category === 'api' && <KeyRound className={cn('h-4 w-4', `text-category-${colorClass}`)} />}
-                      {item.category === 'prompt' && <MessageSquareText className={cn('h-4 w-4', `text-category-${colorClass}`)} />}
-                      {item.category === 'command' && <Terminal className={cn('h-4 w-4', `text-category-${colorClass}`)} />}
-                      {item.category === 'link' && <Link className={cn('h-4 w-4', `text-category-${colorClass}`)} />}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-text-primary truncate">
-                          {item.name}
-                        </span>
-                        {item.favorite && (
-                          <Star className="h-3 w-3 fill-category-all text-category-all shrink-0" />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-text-muted truncate">
-                          {item.category === 'api' && !isRevealed
-                            ? maskValue(item.value)
-                            : truncateValue(item.value, 50)}
-                        </span>
-                        <span className="text-[10px] text-text-muted shrink-0">
-                          {formatDate(item.updatedAt)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      {/* Reveal/Hide for API */}
-                      {item.category === 'api' && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleReveal(item.id);
-                              }}
-                            >
-                              {isRevealed ? (
-                                <EyeOff className="h-3.5 w-3.5" />
-                              ) : (
-                                <Eye className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{isRevealed ? 'Ocultar' : 'Revelar'}</TooltipContent>
-                        </Tooltip>
-                      )}
-
-                      {/* Copy */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopy(item.value, item.id);
-                            }}
-                          >
-                            {isCopied ? (
-                              <Check className="h-3.5 w-3.5 text-success" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Copiar</TooltipContent>
-                      </Tooltip>
-
-                      {/* Favorite */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleFavorite(item.id, item.favorite);
-                            }}
-                          >
-                            <Star
-                              className={cn(
-                                'h-3.5 w-3.5',
-                                item.favorite && 'fill-category-all text-category-all'
-                              )}
-                            />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {item.favorite ? 'Desfavoritar' : 'Favoritar'}
-                        </TooltipContent>
-                      </Tooltip>
-
-                      {/* Edit */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditItem(item);
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Editar</TooltipContent>
-                      </Tooltip>
-
-                      {/* Delete */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(item.id, item.name);
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Excluir</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </div>
-                );
-              })}
+              {displayItems.map((item, index) => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  isRevealed={revealedItemIds.has(item.id)}
+                  isCopied={copiedId === item.id}
+                  isSelected={selectedItemIds.has(item.id)}
+                  onCopy={handleCopy}
+                  onEdit={setEditItem}
+                  onDelete={handleDelete}
+                  onToggleFavorite={handleToggleFavorite}
+                  onToggleReveal={toggleReveal}
+                  onSelect={toggleItemSelection}
+                  onActivity={handleActivity}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -638,39 +443,15 @@ export function VaultScreen() {
         />
 
         {/* Command Palette */}
-        {commandPaletteOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-start justify-center pt-20"
-            onClick={() => setCommandPaletteOpen(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-lg border border-border-default bg-surface-raised p-2 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Input
-                placeholder="Buscar item ou comando..."
-                className="mb-2 border-none bg-surface-hover"
-                autoFocus
-              />
-              <div className="space-y-0.5">
-                {[
-                  { label: 'Adicionar item', shortcut: 'Ctrl+N', action: () => { setCommandPaletteOpen(false); setAddDialogOpen(true); } },
-                  { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { setCommandPaletteOpen(false); const api = (window as any).devVaultApi; await api.exportVault(); } },
-                  { label: 'Travar vault', shortcut: 'Ctrl+L', action: () => { setCommandPaletteOpen(false); handleLock(); } },
-                ].map((cmd) => (
-                  <button
-                    key={cmd.label}
-                    onClick={cmd.action}
-                    className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-text-primary hover:bg-surface-hover cursor-pointer"
-                  >
-                    <span>{cmd.label}</span>
-                    <span className="text-[10px] text-text-muted">{cmd.shortcut}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        <CommandPalette
+          isOpen={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+          commands={[
+            { label: 'Adicionar item', shortcut: 'Ctrl+N', action: () => { setCommandPaletteOpen(false); setAddDialogOpen(true); } },
+            { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { setCommandPaletteOpen(false); const api = window.devVaultApi; await api.exportVault(); } },
+            { label: 'Travar vault', shortcut: 'Ctrl+L', action: () => { setCommandPaletteOpen(false); handleLock(); } },
+          ]}
+        />
       </div>
     </TooltipProvider>
   );

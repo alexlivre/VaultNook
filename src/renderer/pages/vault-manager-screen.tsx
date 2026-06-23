@@ -53,7 +53,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const loadVaults = React.useCallback(async () => {
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       const list = await api.listVaults();
       setVaults(list);
     } catch {
@@ -67,7 +67,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const handleExport = async (vaultId: string) => {
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       await api.exportVaultFile(vaultId);
       toast({ title: 'Vault exportado', variant: 'success' });
     } catch (err: any) {
@@ -77,7 +77,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const handleToggleHidden = async (vaultId: string) => {
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       const nowHidden = await api.toggleHidden(vaultId);
       await loadVaults();
       toast({
@@ -94,7 +94,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
     setDeleting(true);
     setDeleteError('');
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       await api.deleteVaultEntry(deleteVaultId, deletePassword);
       setDeleteVaultId(null);
       setDeletePassword('');
@@ -109,7 +109,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const handleImport = async () => {
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       const result = await api.importVaultFile();
       if (result) {
         await loadVaults();

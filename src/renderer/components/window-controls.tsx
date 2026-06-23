@@ -1,23 +1,12 @@
 import * as React from 'react';
 import { Minus, Square, X } from 'lucide-react';
 
-declare global {
-  interface Window {
-    windowControls: {
-      minimize: () => void;
-      maximize: () => void;
-      close: () => void;
-      onMaximizeChange: (callback: (maximized: boolean) => void) => () => void;
-    };
-  }
-}
-
 export function WindowControls() {
   const [isMaximized, setIsMaximized] = React.useState(false);
 
   React.useEffect(() => {
     const cleanup = window.windowControls.onMaximizeChange(setIsMaximized);
-    return cleanup;
+    return () => { cleanup(); };
   }, []);
 
   return (

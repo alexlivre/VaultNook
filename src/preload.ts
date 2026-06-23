@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { z } from 'zod';
+import { IPC_CHANNELS } from './ipc-channels';
 import type { CreateItem, EditItem, ChangePassword, Item, VaultInfo, ImportResult, VaultEntry } from './renderer/types';
 
 const CreatePasswordPayload = z.object({
@@ -13,76 +14,76 @@ const ToggleFavoritePayload = z.object({ id: z.string(), favorite: z.boolean() }
 const SaveSettingsPayload = z.object({ autoLockTimer: z.number() });
 
 const api = {
-  init: (): Promise<{ vaults: VaultEntry[] }> => ipcRenderer.invoke('vault:init'),
+  init: (): Promise<{ vaults: VaultEntry[] }> => ipcRenderer.invoke(IPC_CHANNELS.INIT),
 
-  listVaults: (): Promise<VaultEntry[]> => ipcRenderer.invoke('vault:list-vaults'),
+  listVaults: (): Promise<VaultEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.LIST_VAULTS),
 
   createVault: (password: string, name: string, hint?: string): Promise<{ recoveryPhrase: string[]; vaultId: string }> => {
     const data = CreatePasswordPayload.parse({ password, name, hint: hint || '' });
-    return ipcRenderer.invoke('vault:create-password', data);
+    return ipcRenderer.invoke(IPC_CHANNELS.CREATE_PASSWORD, data);
   },
 
   unlock: (password: string, vaultId: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string }> => {
     const data = UnlockPayload.parse({ password, vaultId });
-    return ipcRenderer.invoke('vault:unlock', data);
+    return ipcRenderer.invoke(IPC_CHANNELS.UNLOCK, data);
   },
 
-  lock: (): Promise<boolean> => ipcRenderer.invoke('vault:lock'),
+  lock: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.LOCK),
 
   changePassword: (data: ChangePassword): Promise<boolean> =>
-    ipcRenderer.invoke('vault:change-password', data),
+    ipcRenderer.invoke(IPC_CHANNELS.CHANGE_PASSWORD, data),
 
   deleteVault: (password: string): Promise<boolean> =>
-    ipcRenderer.invoke('vault:delete-vault', { password }),
+    ipcRenderer.invoke(IPC_CHANNELS.DELETE_VAULT, { password }),
 
   deleteVaultEntry: (vaultId: string, password: string): Promise<boolean> => {
     const data = DeleteVaultEntryPayload.parse({ vaultId, password });
-    return ipcRenderer.invoke('vault:delete-vault-entry', data);
+    return ipcRenderer.invoke(IPC_CHANNELS.DELETE_VAULT_ENTRY, data);
   },
 
-  getInfo: (): Promise<VaultInfo> => ipcRenderer.invoke('vault:get-info'),
+  getInfo: (): Promise<VaultInfo> => ipcRenderer.invoke(IPC_CHANNELS.GET_INFO),
 
-  getItems: (): Promise<Item[]> => ipcRenderer.invoke('vault:get-items'),
+  getItems: (): Promise<Item[]> => ipcRenderer.invoke(IPC_CHANNELS.GET_ITEMS),
 
   addItem: (data: CreateItem): Promise<Item> =>
-    ipcRenderer.invoke('vault:add-item', data),
+    ipcRenderer.invoke(IPC_CHANNELS.ADD_ITEM, data),
 
   editItem: (data: EditItem): Promise<Item> =>
-    ipcRenderer.invoke('vault:edit-item', data),
+    ipcRenderer.invoke(IPC_CHANNELS.EDIT_ITEM, data),
 
   removeItem: (id: string): Promise<boolean> =>
-    ipcRenderer.invoke('vault:remove-item', id),
+    ipcRenderer.invoke(IPC_CHANNELS.REMOVE_ITEM, id),
 
   exportVault: (): Promise<boolean> =>
-    ipcRenderer.invoke('vault:export'),
+    ipcRenderer.invoke(IPC_CHANNELS.EXPORT),
 
   importVault: (): Promise<ImportResult | null> =>
-    ipcRenderer.invoke('vault:import'),
+    ipcRenderer.invoke(IPC_CHANNELS.IMPORT),
 
   exportVaultFile: (vaultId: string): Promise<boolean> =>
-    ipcRenderer.invoke('vault:export-file', vaultId),
+    ipcRenderer.invoke(IPC_CHANNELS.EXPORT_FILE, vaultId),
 
   importVaultFile: (): Promise<{ id: string; name: string } | null> =>
-    ipcRenderer.invoke('vault:import-file'),
+    ipcRenderer.invoke(IPC_CHANNELS.IMPORT_FILE),
 
   toggleFavorite: (id: string, favorite: boolean): Promise<boolean> => {
     const data = ToggleFavoritePayload.parse({ id, favorite });
-    return ipcRenderer.invoke('vault:toggle-favorite', data);
+    return ipcRenderer.invoke(IPC_CHANNELS.TOGGLE_FAVORITE, data);
   },
 
   getSettings: (): Promise<{ autoLockTimer: number }> =>
-    ipcRenderer.invoke('vault:get-settings'),
+    ipcRenderer.invoke(IPC_CHANNELS.GET_SETTINGS),
 
   saveSettings: (autoLockTimer: number): Promise<boolean> => {
     const data = SaveSettingsPayload.parse({ autoLockTimer });
-    return ipcRenderer.invoke('vault:save-settings', data);
+    return ipcRenderer.invoke(IPC_CHANNELS.SAVE_SETTINGS, data);
   },
 
   getVaultHint: (vaultId: string): Promise<string> =>
-    ipcRenderer.invoke('vault:get-vault-hint', vaultId),
+    ipcRenderer.invoke(IPC_CHANNELS.GET_VAULT_HINT, vaultId),
 
   toggleHidden: (vaultId: string): Promise<boolean> =>
-    ipcRenderer.invoke('vault:toggle-hidden', vaultId),
+    ipcRenderer.invoke(IPC_CHANNELS.TOGGLE_HIDDEN, vaultId),
 };
 
 const windowControls = {

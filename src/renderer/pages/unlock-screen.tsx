@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { WindowControls } from '../components/window-controls';
+import type { AutoLockOption } from '../stores/vault-store';
 
 interface UnlockScreenProps {
   vaultId: string;
@@ -30,11 +31,12 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
     setLoading(true);
 
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       const result = await api.unlock(password, vaultId);
+      const settings = await api.getSettings();
       const { useVaultStore } = await import('../stores/vault-store');
       useVaultStore.getState().setItems(result.items);
-      useVaultStore.getState().setAutoLockTimer(result.info?.settings?.autoLockTimer ?? 60);
+      useVaultStore.getState().setAutoLockTimer((settings.autoLockTimer ?? 60) as AutoLockOption);
       useVaultStore.getState().setActiveVaultId(result.vaultId);
       useVaultStore.getState().setActiveVaultName(vaultName);
       onUnlocked();

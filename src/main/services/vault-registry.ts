@@ -1,5 +1,6 @@
 import { app } from 'electron';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import { readFile, writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 
 export interface VaultRegistryEntry {
@@ -23,40 +24,40 @@ function getRegistryPath(): string {
   return join(app.getPath('userData'), 'vaults.json');
 }
 
-export function loadRegistry(): VaultRegistryEntry[] {
+export async function loadRegistry(): Promise<VaultRegistryEntry[]> {
   const path = getRegistryPath();
   if (!existsSync(path)) {
     registry = { version: '1.0.0', vaults: [] };
-    saveRegistry();
+    await saveRegistry();
     return [];
   }
-  const raw = readFileSync(path, 'utf-8');
+  const raw = await readFile(path, 'utf-8');
   registry = JSON.parse(raw);
   return registry.vaults;
 }
 
-function saveRegistry(): void {
+async function saveRegistry(): Promise<void> {
   if (!registry) return;
-  writeFileSync(getRegistryPath(), JSON.stringify(registry, null, 2), 'utf-8');
+  await writeFile(getRegistryPath(), JSON.stringify(registry, null, 2), 'utf-8');
 }
 
-export function listVaults(): VaultRegistryEntry[] {
-  if (!registry) loadRegistry();
+export async function listVaults(): Promise<VaultRegistryEntry[]> {
+  if (!registry) await loadRegistry();
   return (registry?.vaults || []).filter((v) => !v.hidden);
 }
 
-export function listAllVaults(): VaultRegistryEntry[] {
-  if (!registry) loadRegistry();
+export async function listAllVaults(): Promise<VaultRegistryEntry[]> {
+  if (!registry) await loadRegistry();
   return registry?.vaults || [];
 }
 
-export function getVault(id: string): VaultRegistryEntry | undefined {
-  if (!registry) loadRegistry();
+export async function getVault(id: string): Promise<VaultRegistryEntry | undefined> {
+  if (!registry) await loadRegistry();
   return registry?.vaults.find((v) => v.id === id);
 }
 
-export function addVault(name: string, hint: string, vaultId?: string): VaultRegistryEntry {
-  if (!registry) loadRegistry();
+export async function addVault(name: string, hint: string, vaultId?: string): Promise<VaultRegistryEntry> {
+  if (!registry) await loadRegistry();
   const id = vaultId || crypto.randomUUID();
   const entry: VaultRegistryEntry = {
     id,
@@ -68,35 +69,34 @@ export function addVault(name: string, hint: string, vaultId?: string): VaultReg
     hint,
   };
   registry!.vaults.push(entry);
-  saveRegistry();
+  await saveRegistry();
   return entry;
 }
 
-export function updateVault(id: string, partial: Partial<VaultRegistryEntry>): void {
-  if (!registry) loadRegistry();
+export async function updateVault(id: string, partial: Partial<VaultRegistryEntry>): Promise<void> {
+  if (!registry) await loadRegistry();
   const entry = registry!.vaults.find((v) => v.id === id);
   if (!entry) return;
   Object.assign(entry, partial);
-  saveRegistry();
+  await saveRegistry();
 }
 
-export function removeVault(id: string): void {
-  if (!registry) loadRegistry();
+export async function removeVault(id: string): Promise<void> {
+  if (!registry) await loadRegistry();
   registry!.vaults = registry!.vaults.filter((v) => v.id !== id);
-  saveRegistry();
+  await saveRegistry();
 }
 
-export function getVaultHint(id: string): string {
-  const entry = getVault(id);
+export async function getVaultHint(id: string): Promise<string> {
+  const entry = await getVault(id);
   return entry?.hint || '';
 }
 
-export function migrateOldVault(): string | null {
+export async function migrateOldVault(): Promise<string | null> {
   const oldPath = join(app.getPath('userData'), 'vault.json');
   if (!existsSync(oldPath)) return null;
 
-  // Read old vault to extract createdAt
-  const oldRaw = readFileSync(oldPath, 'utf-8');
+  const oldRaw = await readFile(oldPath, 'utf-8');
   let createdAt = Date.now();
   try {
     const oldData = JSON.parse(oldRaw);
@@ -105,7 +105,6 @@ export function migrateOldVault(): string | null {
     // use current time
   }
 
-  // Create registry entry
   const id = crypto.randomUUID();
   const entry: VaultRegistryEntry = {
     id,
@@ -117,24 +116,18 @@ export function migrateOldVault(): string | null {
     hint: '',
   };
 
-  // Ensure vaults directory exists
   const vaultsDir = join(app.getPath('userData'), 'vaults');
   if (!existsSync(vaultsDir)) {
-    const { mkdirSync } = require('fs');
     mkdirSync(vaultsDir, { recursive: true });
   }
 
-  // Copy old vault to new location
   const newPath = join(vaultsDir, entry.filename);
-  writeFileSync(newPath, oldRaw, 'utf-8');
+  await writeFile(newPath, oldRaw, 'utf-8');
 
-  // Remove old vault
-  const { unlinkSync } = require('fs');
-  unlinkSync(oldPath);
+  await unlink(oldPath);
 
-  // Initialize registry
   registry = { version: '1.0.0', vaults: [entry] };
-  saveRegistry();
+  await saveRegistry();
 
   return id;
 }

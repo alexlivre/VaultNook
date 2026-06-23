@@ -1,7 +1,8 @@
 import { app } from 'electron';
-import { readFileSync, writeFileSync, existsSync, unlinkSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import { readFile, writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import {
   generateSalt,
   hashPassword,
@@ -63,22 +64,19 @@ export function vaultExists(vaultId: string): boolean {
   return existsSync(getVaultPath(vaultId));
 }
 
-export function loadVault(vaultId: string): boolean {
+export async function loadVault(vaultId: string): Promise<boolean> {
   const path = getVaultPath(vaultId);
   if (!existsSync(path)) return false;
 
   vaultPath = path;
-  const raw = readFileSync(path, 'utf-8');
+  const raw = await readFile(path, 'utf-8');
   vaultData = JSON.parse(raw);
   activeVaultId = vaultId;
   vaultKey = null;
   return true;
 }
 
-export function createVault(password: string, hint: string = ''): { recoveryPhrase: string[]; vaultId: string } {
-  saveVaultId();
-  
-  // Create vaults directory if needed
+export async function createVault(password: string, hint: string = ''): Promise<{ recoveryPhrase: string[]; vaultId: string }> {
   const vaultsDir = join(app.getPath('userData'), 'vaults');
   if (!existsSync(vaultsDir)) {
     mkdirSync(vaultsDir, { recursive: true });
@@ -106,22 +104,23 @@ export function createVault(password: string, hint: string = ''): { recoveryPhra
     },
   };
 
-  saveVault();
+  await saveVault();
   vaultKey = deriveKey(password, salt);
 
   return { recoveryPhrase, vaultId: id };
 }
 
-export function unlockVault(password: string): boolean {
+export async function unlockVault(password: string): Promise<boolean> {
   if (!existsSync(vaultPath)) return false;
 
-  const raw = readFileSync(vaultPath, 'utf-8');
+  const raw = await readFile(vaultPath, 'utf-8');
   vaultData = JSON.parse(raw);
   const parsed = vaultData!;
   const salt = Buffer.from(parsed.salt, 'base64');
   const hash = hashPassword(password, salt);
 
-  if (hash.toString('base64') !== parsed.passwordHash) {
+  const expected = Buffer.from(parsed.passwordHash, 'base64');
+  if (!timingSafeEqual(hash, expected)) {
     return false;
   }
 
@@ -142,17 +141,17 @@ export function getActiveVaultId(): string | null {
   return activeVaultId;
 }
 
-export function changePassword(data: ChangePassword): boolean {
+export async function changePassword(data: ChangePassword): Promise<boolean> {
   if (!vaultData || !vaultKey) return false;
 
   const salt = Buffer.from(vaultData.salt, 'base64');
   const currentHash = hashPassword(data.currentPassword, salt);
 
-  if (currentHash.toString('base64') !== vaultData.passwordHash) {
+  const expected = Buffer.from(vaultData.passwordHash, 'base64');
+  if (!timingSafeEqual(currentHash, expected)) {
     return false;
   }
 
-  // Decrypt all items with old key
   const decryptedItems = vaultData.items.map((item) => ({
     ...item,
     value:
@@ -161,11 +160,9 @@ export function changePassword(data: ChangePassword): boolean {
         : item.value,
   }));
 
-  // Derive new key
   vaultKey.zeroize();
   vaultKey = deriveKey(data.newPassword, salt);
 
-  // Re-encrypt API items with new key
   vaultData.items = decryptedItems.map((item) => ({
     ...item,
     value:
@@ -174,22 +171,21 @@ export function changePassword(data: ChangePassword): boolean {
         : item.value,
   }));
 
-  // Update password hash
   const newHash = hashPassword(data.newPassword, salt);
   vaultData!.passwordHash = newHash.toString('base64');
-  saveVault();
+  await saveVault();
   return true;
 }
 
-export function deleteVault(vaultId: string): void {
+export async function deleteVault(vaultId: string): Promise<void> {
   lockVault();
   const path = getVaultPath(vaultId);
   if (existsSync(path)) {
-    unlinkSync(path);
+    await unlink(path);
   }
 }
 
-export function getVaultInfo() {
+export async function getVaultInfo() {
   if (!vaultData) return null;
   const itemsByCategory: Record<string, number> = {
     api: 0,
@@ -208,7 +204,7 @@ export function getVaultInfo() {
   };
 }
 
-export function getAllItems(): Item[] {
+export async function getAllItems(): Promise<Item[]> {
   if (!vaultData || !vaultKey) return [];
   const vk = vaultKey;
   return vaultData.items.map((item) => ({
@@ -220,17 +216,17 @@ export function getAllItems(): Item[] {
   }));
 }
 
-export function addItem(item: Item): void {
+export async function addItem(item: Item): Promise<void> {
   if (!vaultData || !vaultKey) return;
   vaultData.items.push({
     ...item,
     value:
       item.category === 'api' ? encrypt(item.value, vaultKey) : item.value,
   });
-  saveVault();
+  await saveVault();
 }
 
-export function editItem(item: Item): void {
+export async function editItem(item: Item): Promise<void> {
   if (!vaultData || !vaultKey) return;
   const index = vaultData.items.findIndex((i) => i.id === item.id);
   if (index === -1) return;
@@ -239,16 +235,16 @@ export function editItem(item: Item): void {
     value:
       item.category === 'api' ? encrypt(item.value, vaultKey) : item.value,
   };
-  saveVault();
+  await saveVault();
 }
 
-export function removeItem(id: string): void {
+export async function removeItem(id: string): Promise<void> {
   if (!vaultData) return;
   vaultData.items = vaultData.items.filter((i) => i.id !== id);
-  saveVault();
+  await saveVault();
 }
 
-export function exportVault(): string {
+export async function exportVault(): Promise<string> {
   if (!vaultData) return '{}';
   return JSON.stringify(
     {
@@ -262,13 +258,13 @@ export function exportVault(): string {
   );
 }
 
-export function exportVaultRaw(vaultId: string): string | null {
+export async function exportVaultRaw(vaultId: string): Promise<string | null> {
   const path = getVaultPath(vaultId);
   if (!existsSync(path)) return null;
-  return readFileSync(path, 'utf-8');
+  return readFile(path, 'utf-8');
 }
 
-export function importVault(jsonData: string): { imported: number; ignored: number; total: number } {
+export async function importVault(jsonData: string): Promise<{ imported: number; ignored: number; total: number }> {
   if (!vaultData) return { imported: 0, ignored: 0, total: 0 };
   try {
     const data = JSON.parse(jsonData);
@@ -281,41 +277,41 @@ export function importVault(jsonData: string): { imported: number; ignored: numb
         ignored++;
       } else {
         vaultData.items.push({
-          id: item.id,
+          id: crypto.randomUUID(),
           name: item.name,
           value: item.value,
           description: item.description || '',
           category: item.category,
           favorite: item.favorite || false,
           createdAt: item.createdAt || Date.now(),
-          updatedAt: item.updatedAt || Date.now(),
+          updatedAt: Date.now(),
         });
         existingNames.add(item.name);
         imported++;
       }
     }
-    saveVault();
+    await saveVault();
     return { imported, ignored, total: data.items?.length || 0 };
   } catch {
     return { imported: 0, ignored: 0, total: 0 };
   }
 }
 
-export function saveAutoLockTimer(timer: number): void {
+export async function saveAutoLockTimer(timer: number): Promise<void> {
   if (!vaultData) return;
   vaultData.settings.autoLockTimer = timer;
-  saveVault();
+  await saveVault();
 }
 
-export function getAutoLockTimer(): number {
+export async function getAutoLockTimer(): Promise<number> {
   return vaultData?.settings.autoLockTimer ?? 60;
 }
 
-export function getVaultMetadata(vaultId: string): { totalItems: number; itemsByCategory: Record<string, number> } | null {
+export async function getVaultMetadata(vaultId: string): Promise<{ totalItems: number; itemsByCategory: Record<string, number> } | null> {
   const path = getVaultPath(vaultId);
   if (!existsSync(path)) return null;
   try {
-    const raw = readFileSync(path, 'utf-8');
+    const raw = await readFile(path, 'utf-8');
     const data = JSON.parse(raw);
     const itemsByCategory: Record<string, number> = {
       api: 0,
@@ -335,11 +331,8 @@ export function getVaultMetadata(vaultId: string): { totalItems: number; itemsBy
   }
 }
 
-function saveVault(): void {
+async function saveVault(): Promise<void> {
   if (!vaultData || !vaultPath) return;
-  writeFileSync(vaultPath, JSON.stringify(vaultData, null, 2), 'utf-8');
+  await writeFile(vaultPath, JSON.stringify(vaultData, null, 2), 'utf-8');
 }
 
-function saveVaultId(): void {
-  // Used only to set up vaultId from context before createVault
-}

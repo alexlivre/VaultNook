@@ -38,13 +38,13 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
 
   React.useEffect(() => {
     if (open) {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       api.getInfo().then(setInfo);
     }
   }, [open]);
 
   const handleExport = async () => {
-    const api = (window as any).devVaultApi;
+    const api = window.devVaultApi;
     const result = await api.exportVault();
     if (result) {
       toast({ title: 'Vault exportado com sucesso', variant: 'success' });
@@ -52,7 +52,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
   };
 
   const handleImport = async () => {
-    const api = (window as any).devVaultApi;
+    const api = window.devVaultApi;
     const result = await api.importVault();
     if (result) {
       toast({
@@ -79,7 +79,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
     }
 
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       await api.changePassword({ currentPassword, newPassword, confirmPassword });
       toast({ title: 'Senha alterada com sucesso', variant: 'success' });
       setChangingPassword(false);
@@ -96,7 +96,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
     setDeleteError('');
 
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       await api.deleteVault(deletePassword);
       onLock();
     } catch (err: any) {
@@ -107,7 +107,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
   const handleTimerChange = async (timer: number) => {
     setAutoLockTimer(timer as any);
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       await api.saveSettings(timer);
     } catch {
       // silent

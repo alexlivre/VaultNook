@@ -50,7 +50,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
 
     setLoading(true);
     try {
-      const api = (window as any).devVaultApi;
+      const api = window.devVaultApi;
       await api.createVault(password, vaultName.trim(), hint.trim());
       onCreated();
     } catch (err: any) {
