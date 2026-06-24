@@ -16,8 +16,14 @@ import {
 } from './crypto';
 import type { Item, Category, ChangePassword } from '../../renderer/types';
 
+function shouldEncrypt(category: string, formatVersion?: number): boolean {
+  if (formatVersion === 2) return true;
+  return category === 'api';
+}
+
 interface VaultData {
   version: string;
+  formatVersion?: number;
   createdAt: number;
   passwordHash: string;
   salt: string;
@@ -93,6 +99,7 @@ export async function createVault(password: string, hint: string = ''): Promise<
 
   vaultData = {
     version: '0.1.0',
+    formatVersion: 2,
     createdAt: Date.now(),
     passwordHash: hash.toString('base64'),
     salt: salt.toString('base64'),
@@ -163,12 +170,10 @@ export async function changePassword(data: ChangePassword): Promise<boolean> {
   vaultKey.zeroize();
   vaultKey = deriveKey(data.newPassword, salt);
 
+  const fv = vaultData.formatVersion || 1;
   vaultData.items = decryptedItems.map((item) => ({
     ...item,
-    value:
-      item.category === 'api'
-        ? encrypt(item.value, vaultKey!)
-        : item.value,
+    value: shouldEncrypt(item.category, fv) ? encrypt(item.value, vaultKey!) : item.value,
   }));
 
   const newHash = hashPassword(data.newPassword, salt);
@@ -218,22 +223,22 @@ export async function getAllItems(): Promise<Item[]> {
 
 export async function addItem(item: Item): Promise<void> {
   if (!vaultData || !vaultKey) return;
+  const fv = vaultData.formatVersion || 1;
   vaultData.items.push({
     ...item,
-    value:
-      item.category === 'api' ? encrypt(item.value, vaultKey) : item.value,
+    value: shouldEncrypt(item.category, fv) ? encrypt(item.value, vaultKey) : item.value,
   });
   await saveVault();
 }
 
 export async function editItem(item: Item): Promise<void> {
   if (!vaultData || !vaultKey) return;
+  const fv = vaultData.formatVersion || 1;
   const index = vaultData.items.findIndex((i) => i.id === item.id);
   if (index === -1) return;
   vaultData.items[index] = {
     ...item,
-    value:
-      item.category === 'api' ? encrypt(item.value, vaultKey) : item.value,
+    value: shouldEncrypt(item.category, fv) ? encrypt(item.value, vaultKey) : item.value,
   };
   await saveVault();
 }
@@ -248,9 +253,14 @@ export async function exportVault(): Promise<string> {
   if (!vaultData) return '{}';
   return JSON.stringify(
     {
+      formatVersion: vaultData.formatVersion || 1,
       version: vaultData.version,
       createdAt: vaultData.createdAt,
       exportedAt: Date.now(),
+      passwordHash: vaultData.passwordHash,
+      salt: vaultData.salt,
+      recoveryHash: vaultData.recoveryHash,
+      settings: vaultData.settings,
       items: vaultData.items,
     },
     null,
@@ -272,14 +282,18 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
     let imported = 0;
     let ignored = 0;
 
+    const fv = vaultData.formatVersion || 1;
     for (const item of data.items || []) {
       if (existingNames.has(item.name)) {
         ignored++;
       } else {
+        const value = shouldEncrypt(item.category, fv) && typeof item.value === 'string'
+          ? encrypt(item.value, vaultKey!)
+          : item.value;
         vaultData.items.push({
           id: crypto.randomUUID(),
           name: item.name,
-          value: item.value,
+          value,
           description: item.description || '',
           category: item.category,
           favorite: item.favorite || false,
@@ -329,6 +343,26 @@ export async function getVaultMetadata(vaultId: string): Promise<{ totalItems: n
   } catch {
     return null;
   }
+}
+
+export async function migrateToFullEncryption(): Promise<boolean> {
+  if (!vaultData || !vaultKey || vaultData.formatVersion === 2) return false;
+
+  const decryptedItems = vaultData.items.map((item) => ({
+    ...item,
+    value: typeof item.value === 'object'
+      ? decrypt(item.value, vaultKey!)
+      : item.value,
+  }));
+
+  vaultData.items = decryptedItems.map((item) => ({
+    ...item,
+    value: encrypt(item.value, vaultKey!),
+  }));
+
+  vaultData.formatVersion = 2;
+  await saveVault();
+  return true;
 }
 
 async function saveVault(): Promise<void> {

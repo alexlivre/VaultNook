@@ -31,6 +31,7 @@ interface ItemCardProps {
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
   onActivity: () => void;
+  disableAnimation?: boolean;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -53,6 +54,7 @@ export function ItemCard({
   onToggleReveal,
   onSelect,
   onActivity,
+  disableAnimation = false,
 }: ItemCardProps) {
   const colorClass = CategoryColorName[item.category];
   const Icon = categoryIcons[item.category];
@@ -60,16 +62,17 @@ export function ItemCard({
   return (
     <div
       className={cn(
-        'group flex items-center gap-3 rounded-lg border border-border-default bg-surface-raised px-3 py-2.5 transition-all duration-150 cursor-pointer animate-fade-in-up',
+        'group flex items-center gap-3 rounded-lg border border-border-default bg-surface-raised px-3 py-2.5 transition-all duration-150 cursor-pointer',
         isSelected && 'border-category-all/50 bg-category-all/5',
-        !isSelected && 'hover:bg-surface-hover hover:shadow-sm'
+        !isSelected && 'hover:bg-surface-hover hover:shadow-sm',
+        !disableAnimation && 'animate-fade-in-up'
       )}
       style={{
         borderLeftWidth: '3px',
         borderLeftColor: item.favorite
           ? 'var(--color-category-all)'
           : `var(--color-category-${colorClass})`,
-        animationDelay: `${Math.min(index * 20, 300)}ms`,
+        animationDelay: disableAnimation ? '0ms' : `${Math.min(index * 20, 300)}ms`,
       }}
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {

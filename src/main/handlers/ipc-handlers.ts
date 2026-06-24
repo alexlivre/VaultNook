@@ -263,6 +263,10 @@ export function registerIpcHandlers(): void {
     await registry.updateVault(id, { hidden: !entry.hidden });
     return !entry.hidden;
   });
+
+  ipcMain.handle(IPC_CHANNELS.MIGRATE_ENCRYPTION, async () => {
+    return vault.migrateToFullEncryption();
+  });
 }
 
 export { IPC_CHANNELS };

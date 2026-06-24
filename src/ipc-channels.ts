@@ -21,4 +21,5 @@ export const IPC_CHANNELS = {
   SAVE_SETTINGS: 'vault:save-settings',
   GET_VAULT_HINT: 'vault:get-vault-hint',
   TOGGLE_HIDDEN: 'vault:toggle-hidden',
+  MIGRATE_ENCRYPTION: 'vault:migrate-encryption',
 } as const;

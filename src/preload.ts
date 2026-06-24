@@ -84,6 +84,9 @@ const api = {
 
   toggleHidden: (vaultId: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.TOGGLE_HIDDEN, vaultId),
+
+  migrateEncryption: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MIGRATE_ENCRYPTION),
 };
 
 const windowControls = {

@@ -107,9 +107,14 @@ export interface VaultInfo {
 }
 
 export interface ExportData {
+  formatVersion?: number;
   version: string;
   createdAt: number;
   exportedAt: number;
+  passwordHash?: string;
+  salt?: string;
+  recoveryHash?: string;
+  settings?: { autoLockTimer: number };
   items: Item[];
 }
 

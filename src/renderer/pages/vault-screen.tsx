@@ -26,6 +26,7 @@ import { WindowControls } from '../components/window-controls';
 import { ItemCard } from '../components/item-card';
 import { CommandPalette } from '../components/command-palette';
 import { VaultToolbar } from '../components/vault-toolbar';
+import { List } from 'react-window';
 
 const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; color: string }[] = [
   { id: 'all', label: 'Tudo', icon: LayoutGrid, color: 'text-category-all' },
@@ -34,6 +35,62 @@ const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; colo
   { id: 'command', label: 'Commands', icon: Terminal, color: 'text-category-command' },
   { id: 'link', label: 'Links', icon: Link, color: 'text-category-link' },
 ];
+
+interface VaultRowProps {
+  items: Item[];
+  revealedItemIds: Set<string>;
+  copiedId: string | null;
+  selectedItemIds: Set<string>;
+  onCopy: (value: string, itemId: string) => void;
+  onEdit: (item: Item) => void;
+  onDelete: (id: string, name: string) => void;
+  onToggleFavorite: (id: string, current: boolean) => void;
+  onToggleReveal: (id: string) => void;
+  onSelect: (id: string) => void;
+  onActivity: () => void;
+}
+
+function VaultRow({
+  ariaAttributes,
+  index,
+  style,
+  items,
+  revealedItemIds,
+  copiedId,
+  selectedItemIds,
+  onCopy,
+  onEdit,
+  onDelete,
+  onToggleFavorite,
+  onToggleReveal,
+  onSelect,
+  onActivity,
+}: {
+  ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
+  index: number;
+  style: React.CSSProperties;
+} & VaultRowProps) {
+  const item = items[index];
+  return (
+    <div {...ariaAttributes} style={style} className="px-0">
+      <ItemCard
+        item={item}
+        index={index}
+        isRevealed={revealedItemIds.has(item.id)}
+        isCopied={copiedId === item.id}
+        isSelected={selectedItemIds.has(item.id)}
+        onCopy={onCopy}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleFavorite={onToggleFavorite}
+        onToggleReveal={onToggleReveal}
+        onSelect={onSelect}
+        onActivity={onActivity}
+        disableAnimation
+      />
+    </div>
+  );
+}
 
 export function VaultScreen() {
   const {
@@ -67,6 +124,21 @@ export function VaultScreen() {
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const deletedItemRef = React.useRef<Item | null>(null);
+  const undoTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [listHeight, setListHeight] = React.useState(600);
+  const listContainerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const updateHeight = () => {
+      if (listContainerRef.current) {
+        setListHeight(listContainerRef.current.clientHeight);
+      }
+    };
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
 
   const displayItems = React.useMemo(
     () => filteredItems(),
@@ -131,24 +203,43 @@ export function VaultScreen() {
 
   const handleDelete = React.useCallback(
     async (id: string, name: string) => {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      deletedItemRef.current = item;
+
       try {
         const api = window.devVaultApi;
         await api.removeItem(id);
         removeItem(id);
+
+        if (undoTimeoutRef.current) {
+          clearTimeout(undoTimeoutRef.current);
+        }
+
         toast({
           title: `"${name}" excluído`,
           variant: 'default',
           duration: 5000,
-          onUndo: () => {
-            // Re-add would need the full item - simplified
+          onUndo: async () => {
+            if (!deletedItemRef.current) return;
+            const api = window.devVaultApi;
+            await api.addItem(deletedItemRef.current);
+            const updatedItems = await api.getItems();
+            useVaultStore.getState().setItems(updatedItems);
+            deletedItemRef.current = null;
             toast({ title: 'Item restaurado', variant: 'success' });
           },
         });
+
+        undoTimeoutRef.current = setTimeout(() => {
+          deletedItemRef.current = null;
+        }, 5000);
       } catch {
         toast({ title: 'Erro ao excluir', variant: 'destructive' });
       }
     },
-    [removeItem, toast]
+    [items, removeItem, toast]
   );
 
   const handleToggleFavorite = React.useCallback(
@@ -312,7 +403,7 @@ export function VaultScreen() {
         )}
 
         {/* Item List */}
-        <div className="flex-1 overflow-y-auto px-4 pb-16">
+        <div className="flex-1 px-4 pb-16 flex flex-col">
           {displayItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-raised mb-3">
@@ -359,24 +450,27 @@ export function VaultScreen() {
               )}
             </div>
           ) : (
-            <div className="space-y-1 py-1">
-              {displayItems.map((item, index) => (
-                <ItemCard
-                  key={item.id}
-                  item={item}
-                  index={index}
-                  isRevealed={revealedItemIds.has(item.id)}
-                  isCopied={copiedId === item.id}
-                  isSelected={selectedItemIds.has(item.id)}
-                  onCopy={handleCopy}
-                  onEdit={setEditItem}
-                  onDelete={handleDelete}
-                  onToggleFavorite={handleToggleFavorite}
-                  onToggleReveal={toggleReveal}
-                  onSelect={toggleItemSelection}
-                  onActivity={handleActivity}
-                />
-              ))}
+            <div ref={listContainerRef} className="flex-1 overflow-hidden">
+              <List
+                defaultHeight={listHeight}
+                rowCount={displayItems.length}
+                rowHeight={72}
+                rowComponent={VaultRow}
+                rowProps={{
+                  items: displayItems,
+                  revealedItemIds,
+                  copiedId,
+                  selectedItemIds,
+                  onCopy: handleCopy,
+                  onEdit: setEditItem,
+                  onDelete: handleDelete,
+                  onToggleFavorite: handleToggleFavorite,
+                  onToggleReveal: toggleReveal,
+                  onSelect: toggleItemSelection,
+                  onActivity: handleActivity,
+                }}
+                overscanCount={5}
+              />
             </div>
           )}
         </div>
@@ -447,10 +541,14 @@ export function VaultScreen() {
           isOpen={commandPaletteOpen}
           onClose={() => setCommandPaletteOpen(false)}
           commands={[
-            { label: 'Adicionar item', shortcut: 'Ctrl+N', action: () => { setCommandPaletteOpen(false); setAddDialogOpen(true); } },
-            { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { setCommandPaletteOpen(false); const api = window.devVaultApi; await api.exportVault(); } },
-            { label: 'Travar vault', shortcut: 'Ctrl+L', action: () => { setCommandPaletteOpen(false); handleLock(); } },
+            { label: 'Adicionar item', shortcut: 'Ctrl+N', action: () => { setAddDialogOpen(true); } },
+            { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { const api = window.devVaultApi; await api.exportVault(); } },
+            { label: 'Travar vault', shortcut: 'Ctrl+L', action: () => { handleLock(); } },
           ]}
+          items={items}
+          onSelectItem={(item) => {
+            handleCopy(item.value, item.id);
+          }}
         />
       </div>
     </TooltipProvider>
