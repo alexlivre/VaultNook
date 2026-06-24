@@ -27,9 +27,12 @@
 | **Indicador de força** | Feedback visual em tempo real durante a criação |
 | **Bloqueio automático** | Trava após período de inatividade configurável |
 | **Bloqueio manual** | Trave instantaneamente com um clique ou atalho |
-| **Criptografia AES-256-GCM** | Valores de API criptografados individualmente |
+| **Criptografia AES-256-GCM** | Todas as categorias criptografadas individualmente |
+| **Comparação segura** | Verificação de senha com `timingSafeEqual` (ataques de tempo) |
 | **Zeroização de chave** | Chave criptográfica sobrescrita na memória ao travar |
 | **Troca de senha segura** | Re-criptografa todos os valores com a nova chave |
+| **Sandbox habilitado** | BrowserWindow com `sandbox: true` para isolamento |
+| **Aleatoriedade criptográfica** | Geração de phrase de recuperação com `crypto.randomInt()` |
 
 ### Gerenciamento de Itens
 
@@ -45,6 +48,7 @@
 | **Multi-select** | Selecione vários itens para ações em lote |
 | **Valores mascarados** | APIs aparecem ocultas por padrão — revele quando precisar |
 | **Menu de contexto** | Clique direito para ações rápidas |
+| **Desfazer exclusão** | Restaure item excluído em até 5 segundos |
 
 ### Gestão do Cofre
 
@@ -57,7 +61,7 @@
 | **Exportar cofre** | Exporte qualquer cofre sem precisar desbloquear |
 | **Excluir cofre** | Remove permanentemente o cofre (requer senha) |
 | **Dica de senha** | Cadastre e visualize dicas na tela de desbloqueio |
-| **Exportar backup** | Salva todo o cofre em JSON (APIs criptografados) |
+| **Exportar backup** | Salva cofre completo em JSON (metadados + itens criptografados) |
 | **Importar backup** | Restaura a partir de JSON, mesclando com existentes |
 | **Informações do cofre** | Estatísticas: total de itens, por categoria, versão |
 | **Exclusão segura** | Remove permanentemente todos os dados (requer senha) |
@@ -68,10 +72,11 @@
 |---------------|-----------|
 | **Tema escuro profissional** | Design system completo com cores, elevação e espaçamento |
 | **Abas coloridas** | Cada categoria com sua cor de identificação |
-| **Paleta de comandos** | Ctrl+K para ações rápidas |
+| **Paleta de comandos** | Ctrl+K para ações rápidas e busca de itens |
 | **Notificações toast** | Feedback visual com opção de "Desfazer" |
 | **Estados vazios** | Mensagens contextuais para cada situação |
 | **Animações suaves** | Micro-interações a 60fps |
+| **Lista virtualizada** | Performance otimizada para cofres com 50+ itens |
 | **Botões de janela** | Minimizar, maximizar e fechar customizados |
 | **Janela arrastável** | Titlebar customizada, arraste em qualquer lugar |
 
@@ -115,6 +120,8 @@ npm start
 | Comando | Descrição |
 |---------|-----------|
 | `npm start` | Inicia o app em modo desenvolvimento |
+| `npm test` | Roda testes em watch mode |
+| `npm run test:run` | Roda testes uma vez |
 | `npm run package` | Empacota o app para o sistema atual (portátil) |
 | `npm run make` | Gera instaladores (Windows/macOS/Linux) |
 | `npm run publish` | Publica uma release |
@@ -148,6 +155,8 @@ Depois de rodar `npm run make` no Windows, o instalador estará em `out/make/squ
 | **Validação IPC** | Zod 4 |
 | **Criptografia** | Node.js crypto (PBKDF2 + AES-256-GCM) |
 | **Build** | Electron Forge + Vite |
+| **Testes** | Vitest |
+| **Virtualização** | react-window |
 | **Ícones** | Lucide |
 
 ---
@@ -159,30 +168,38 @@ src/
 ├── main.ts                          # Processo principal Electron
 ├── preload.ts                       # Ponte segura IPC com Zod
 ├── renderer.tsx                     # Entry point React
+├── ipc-channels.ts                  # Canais IPC compartilhados
 ├── main/
-│   ├── handlers/ipc-handlers.ts     # 16 handlers IPC validados
+│   ├── handlers/ipc-handlers.ts     # 22 handlers IPC validados
 │   └── services/
 │       ├── crypto.ts                # PBKDF2, AES-256-GCM, zeroização
-│       ├── vault.ts                 # CRUD, backup, troca de senha
+│       ├── vault.ts                 # CRUD, backup, troca de senha, criptografia total
 │       └── vault-registry.ts        # Registro de múltiplos cofres
-└── renderer/
-    ├── App.tsx                      # Roteamento de telas
-    ├── types/index.ts               # Schemas Zod + tipos
-    ├── stores/vault-store.ts        # Estado global (Zustand)
-    ├── lib/
-    │   ├── utils.ts                 # Helpers (máscara, senha, data)
-    │   └── hooks.ts                 # Auto-lock, atalhos de teclado
-    ├── components/
-    │   ├── ui/                      # 10+ componentes base
-    │   ├── add-edit-item-dialog.tsx  # CRUD com gerador de senha
-    │   ├── vault-settings-sheet.tsx  # Painel de configurações
-    │   ├── toast-provider.tsx       # Sistema de notificações
-    │   └── window-controls.tsx      # Botões de janela customizados
-    └── pages/
-        ├── vault-manager-screen.tsx     # Seleção de cofres
-        ├── create-password-screen.tsx   # Criação de senha + dica
-        ├── unlock-screen.tsx            # Desbloqueio com dica
-        └── vault-screen.tsx             # Tela principal
+├── renderer/
+│   ├── App.tsx                      # Roteamento de telas
+│   ├── types/index.ts               # Schemas Zod + tipos
+│   ├── stores/vault-store.ts        # Estado global (Zustand)
+│   ├── lib/
+│   │   ├── utils.ts                 # Helpers (máscara, senha, data)
+│   │   └── hooks.ts                 # Auto-lock, atalhos de teclado
+│   ├── components/
+│   │   ├── ui/                      # 10+ componentes base
+│   │   ├── add-edit-item-dialog.tsx  # CRUD com gerador de senha
+│   │   ├── command-palette.tsx      # Paleta de comandos funcional
+│   │   ├── error-boundary.tsx       # Error Boundary React
+│   │   ├── item-card.tsx            # Card de item extraído
+│   │   ├── vault-settings-sheet.tsx # Painel de configurações
+│   │   ├── vault-toolbar.tsx        # Toolbar de busca extraída
+│   │   ├── toast-provider.tsx       # Sistema de notificações
+│   │   └── window-controls.tsx      # Botões de janela customizados
+│   └── pages/
+│       ├── vault-manager-screen.tsx     # Seleção de cofres
+│       ├── create-password-screen.tsx   # Criação de senha + dica
+│       ├── unlock-screen.tsx            # Desbloqueio com dica
+│       └── vault-screen.tsx             # Tela principal
+└── __tests__/
+    ├── crypto.test.ts               # Testes de criptografia (11)
+    └── vault.test.ts                # Testes de vault CRUD (8)
 ```
 
 ---
@@ -197,22 +214,24 @@ Senha mestra
     ▼
 PBKDF2 (600.000 iterações, SHA-256)
     │
-    ├──► Hash da senha (armazenado no vault.json)
+    ├──► Hash da senha (comparação segura via timingSafeEqual)
     │
     └──► Chave AES-256 (mantida em Buffer mutável na memória)
               │
               ▼
-         AES-256-GCM (por item da categoria APIs)
+         AES-256-GCM (por item — todas as categorias)
               │
               ▼
          Ciphertext + IV + Tag (armazenados no vault.json)
 ```
 
 - **Senha mestra** → PBKDF2 com salt aleatório de 32 bytes
+- **Comparação segura** → `timingSafeEqual` previne ataques de timing
 - **Chave criptográfica** → armazenada em `Buffer` mutável, não em string
 - **Zeroização** → ao travar, `buffer.fill(0)` sobrescreve a chave na RAM
-- **Backup** → valores de API permanecem criptografados no JSON exportado
+- **Backup completo** → metadados + itens criptografados no JSON exportado
 - **Troca de senha** → descriptografa tudo com a chave antiga e re-criptografa com a nova
+- **Sandbox** → BrowserWindow com `sandbox: true` para isolamento do Chromium
 
 ---
 
@@ -221,28 +240,33 @@ PBKDF2 (600.000 iterações, SHA-256)
 ### v0.1.0 ✅ (atual)
 - ✅ Autenticação com senha mestra
 - ✅ CRUD de itens com 4 categorias
-- ✅ Criptografia AES-256-GCM
+- ✅ Criptografia AES-256-GCM (todas categorias, formatVersion 2)
+- ✅ Comparação segura com timingSafeEqual
 - ✅ Busca global com sintaxe `cat:`
 - ✅ Favoritos e multi-select
-- ✅ Export/Import JSON
+- ✅ Export/Import JSON (backup completo)
 - ✅ Auto-lock configurável
-- ✅ Paleta de comandos (Ctrl+K)
+- ✅ Paleta de comandos funcional com busca
+- ✅ Desfazer exclusão (5 segundos)
 - ✅ Tema escuro profissional
+- ✅ Lista virtualizada para 50+ itens
 - ✅ Múltiplos cofres
 - ✅ Tela de seleção de cofre
 - ✅ Dica de senha
 - ✅ Botões de janela customizados
+- ✅ Error Boundary React
+- ✅ Testes automatizados (Vitest, 19 testes)
 
 ### v0.2.0 🔜
 - Tags e labels personalizáveis
 - Categorias customizáveis
 - Arrastar e soltar itens
+- Migração automática de cofres antigos
 
 ### v0.3.0
 - Sincronização via Dropbox/OneDrive
 
 ### v1.0.0
-- Testes de integração
 - Documentação completa
 
 ---
