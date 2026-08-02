@@ -1,7 +1,8 @@
 import { app } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
-import { readFile, writeFile, unlink } from 'fs/promises';
+import { readFile, unlink } from 'fs/promises';
 import { join } from 'path';
+import { atomicWriteFile, restrictPathAcl } from './fs-utils';
 
 export interface VaultRegistryEntry {
   id: string;
@@ -24,7 +25,12 @@ function getRegistryPath(): string {
   return join(app.getPath('userData'), 'vaults.json');
 }
 
+async function ensureRestricted(): Promise<void> {
+  await restrictPathAcl(join(app.getPath('userData'), 'vaults'), getRegistryPath());
+}
+
 export async function loadRegistry(): Promise<VaultRegistryEntry[]> {
+  await ensureRestricted();
   const path = getRegistryPath();
   if (!existsSync(path)) {
     registry = { version: '1.0.0', vaults: [] };
@@ -38,7 +44,7 @@ export async function loadRegistry(): Promise<VaultRegistryEntry[]> {
 
 async function saveRegistry(): Promise<void> {
   if (!registry) return;
-  await writeFile(getRegistryPath(), JSON.stringify(registry, null, 2), 'utf-8');
+  await atomicWriteFile(getRegistryPath(), JSON.stringify(registry, null, 2));
 }
 
 export async function listVaults(): Promise<VaultRegistryEntry[]> {
@@ -58,6 +64,7 @@ export async function getVault(id: string): Promise<VaultRegistryEntry | undefin
 
 export async function addVault(name: string, hint: string, vaultId?: string): Promise<VaultRegistryEntry> {
   if (!registry) await loadRegistry();
+  await ensureRestricted();
   const id = vaultId || crypto.randomUUID();
   const entry: VaultRegistryEntry = {
     id,
@@ -122,7 +129,7 @@ export async function migrateOldVault(): Promise<string | null> {
   }
 
   const newPath = join(vaultsDir, entry.filename);
-  await writeFile(newPath, oldRaw, 'utf-8');
+  await atomicWriteFile(newPath, oldRaw);
 
   await unlink(oldPath);
 
