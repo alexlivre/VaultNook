@@ -1,0 +1,25 @@
+appId: com.alexlivre.devvault
+productName: DevVault
+directories:
+  buildResources: build
+  output: dist
+files:
+  - .vite/build/**
+  - .vite/renderer/**
+  - package.json
+asar: true
+npmRebuild: false
+afterPack: scripts/apply-fuses.js
+win:
+  target:
+    - nsis
+  icon: build/icon.png
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: DevVault
+  installerLanguages:
+    - en_US
+    - pt_BR
