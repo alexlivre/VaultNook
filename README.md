@@ -206,32 +206,32 @@ src/
 
 ## 🛡️ Segurança
 
-### Como seus dados são protegidos
+### Como seus dados são protegidos (v3)
 
 ```
-Senha mestra
-    │
-    ▼
-PBKDF2 (600.000 iterações, SHA-256)
-    │
-    ├──► Hash da senha (comparação segura via timingSafeEqual)
-    │
-    └──► Chave AES-256 (mantida em Buffer mutável na memória)
-              │
-              ▼
-         AES-256-GCM (por item — todas as categorias)
-              │
-              ▼
-         Ciphertext + IV + Tag (armazenados no vault.json)
+Senha mestra / Frase BIP39
+        │
+        ▼
+   PBKDF2 (600.000 iterações, SHA-256)
+        │
+        └──► chave de embrulho ──► AES-GCM ──► Chave-mestra (256 bits, em memória)
+                                                     │
+                                                     ▼
+                        AES-256-GCM por campo (nome, valor, descrição)
 ```
 
-- **Senha mestra** → PBKDF2 com salt aleatório de 32 bytes
-- **Comparação segura** → `timingSafeEqual` previne ataques de timing
-- **Chave criptográfica** → armazenada em `Buffer` mutável, não em string
-- **Zeroização** → ao travar, `buffer.fill(0)` sobrescreve a chave na RAM
-- **Backup completo** → metadados + itens criptografados no JSON exportado
-- **Troca de senha** → descriptografa tudo com a chave antiga e re-criptografa com a nova
-- **Sandbox** → BrowserWindow com `sandbox: true` para isolamento do Chromium
+- **Chave-mestra de 256 bits** gerada aleatoriamente por cofre; criptografa nome, valor e
+  descrição de cada item com AES-256-GCM (IV único por campo).
+- A chave-mestra é protegida por duas "cápsulas" (`masterKeyWrap` e `recoveryKeyWrap`):
+  uma derivada da **senha mestra** e outra da **frase de recuperação BIP39** (12 palavras).
+- **Trocar a senha** apenas re-embrulha a chave-mestra — nada é re-criptografado.
+- **Recuperação**: se a senha for esquecida, a frase BIP39 desembrulha a chave-mestra e
+  permite definir uma nova senha.
+- Chave em `Buffer` mutável, zeroizada ao travar; comparação de senha via `timingSafeEqual`.
+- **Migração automática**: cofres antigos (v1/v2) são convertidos para v3 no primeiro
+  desbloqueio, gerando uma nova frase de recuperação exibida uma única vez.
+- Arquivos gravados atomicamente (`.tmp` + rename) e com ACL restrita ao usuário atual.
+- Senha e recovery phrase nunca são armazenadas em claro — apenas hashes PBKDF2.
 
 ---
 
@@ -240,7 +240,7 @@ PBKDF2 (600.000 iterações, SHA-256)
 ### v0.1.0 ✅ (atual)
 - ✅ Autenticação com senha mestra
 - ✅ CRUD de itens com 4 categorias
-- ✅ Criptografia AES-256-GCM (todas categorias, formatVersion 2)
+- ✅ Criptografia AES-256-GCM (todas categorias, formatVersion 3 com chave-mestra)
 - ✅ Comparação segura com timingSafeEqual
 - ✅ Busca global com sintaxe `cat:`
 - ✅ Favoritos e multi-select
@@ -255,7 +255,7 @@ PBKDF2 (600.000 iterações, SHA-256)
 - ✅ Dica de senha
 - ✅ Botões de janela customizados
 - ✅ Error Boundary React
-- ✅ Testes automatizados (Vitest, 19 testes)
+- ✅ Testes automatizados (Vitest, 21 testes)
 
 ### v0.2.0 🔜
 - Tags e labels personalizáveis
