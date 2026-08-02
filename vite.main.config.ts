@@ -1,4 +1,20 @@
 import { defineConfig } from 'vite';
+import { builtinModules } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
-// https://vitejs.dev/config
-export default defineConfig({});
+const dir = fileURLToPath(new URL('.', import.meta.url));
+
+const external = ['electron', ...builtinModules, ...builtinModules.map((m) => `node:${m}`)];
+
+export default defineConfig({
+  build: {
+    outDir: '.vite/build',
+    emptyOutDir: false,
+    lib: {
+      entry: `${dir}src/main.ts`,
+      formats: ['cjs'],
+      fileName: () => 'main.js',
+    },
+    rollupOptions: { external },
+  },
+});
