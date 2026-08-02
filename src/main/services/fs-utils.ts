@@ -1,4 +1,4 @@
-import { writeFile, rename, chmod } from 'fs/promises';
+import { writeFile, rename, chmod, stat } from 'fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -16,7 +16,9 @@ export async function restrictPathAcl(...paths: string[]): Promise<void> {
       if (process.platform === 'win32') {
         const user = process.env.USERNAME || process.env.USER || '';
         if (!user) continue;
-        await execFileAsync('icacls', [p, '/grant:r', `${user}:(OI)(CI)F`, '/inheritance:r', '/Q']);
+        const isDir = (await stat(p)).isDirectory();
+        const perm = isDir ? `${user}:(OI)(CI)F` : `${user}:F`;
+        await execFileAsync('icacls', [p, '/grant:r', perm, '/inheritance:r', '/Q']);
       } else {
         await chmod(p, 0o600);
       }
