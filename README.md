@@ -119,27 +119,27 @@ npm start
 
 | Comando | Descrição |
 |---------|-----------|
-| `npm start` | Inicia o app em modo desenvolvimento |
+| `npm start` | Inicia o app em modo desenvolvimento (HMR) |
 | `npm test` | Roda testes em watch mode |
 | `npm run test:run` | Roda testes uma vez |
-| `npm run package` | Empacota o app para o sistema atual (portátil) |
-| `npm run make` | Gera instaladores (Windows/macOS/Linux) |
-| `npm run publish` | Publica uma release |
+| `npm run build` | Compila main/preload/renderer para `.vite/` |
+| `npm run package` | Gera build portátil (sem instalação) → `dist/win-unpacked/` |
+| `npm run make` | Gera instalador NSIS para Windows → `dist/` |
 | `npm run lint` | Verifica qualidade do código |
 
 ### Executável
 
 ```bash
 # Gera uma pasta portátil com o app (sem instalação)
-# Saída: out/DevVault-win32-x64/
+# Saída: dist/win-unpacked/
 npm run package
 
-# Gera um instalador (Windows: .exe Squirrel, macOS: .dmg, Linux: .deb/.rpm)
-# Saída: out/make/
+# Gera um instalador para Windows (NSIS)
+# Saída: dist/DevVault-0.1.0-setup.exe
 npm run make
 ```
 
-Depois de rodar `npm run make` no Windows, o instalador estará em `out/make/squirrel.windows/x64/`. Você pode executar o `.exe` diretamente ou instalar o app pelo instalador gerado.
+Depois de rodar `npm run make` no Windows, o instalador estará em `dist/`. Execute o `.exe` do instalador para instalar o app (por usuário, sem admin). O app também pode ser executado diretamente em `dist/win-unpacked/DevVault.exe`.
 
 ---
 
@@ -154,7 +154,7 @@ Depois de rodar `npm run make` no Windows, o instalador estará em `out/make/squ
 | **Estado** | Zustand 5 |
 | **Validação IPC** | Zod 4 |
 | **Criptografia** | Node.js crypto (PBKDF2 + AES-256-GCM) |
-| **Build** | Electron Forge + Vite |
+| **Build** | Vite + electron-builder |
 | **Testes** | Vitest |
 | **Virtualização** | react-window |
 | **Ícones** | Lucide |
