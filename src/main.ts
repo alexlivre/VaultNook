@@ -1,11 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
-import started from 'electron-squirrel-startup';
 import { registerIpcHandlers } from './main/handlers/ipc-handlers';
-
-if (started) {
-  app.quit();
-}
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -31,12 +26,11 @@ const createWindow = () => {
     mainWindow?.show();
   });
 
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl) {
+    mainWindow.loadURL(devServerUrl);
   } else {
-    mainWindow.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-    );
+    mainWindow.loadFile(path.join(__dirname, '../renderer/main_window/index.html'));
   }
 
   // mainWindow.webContents.openDevTools();
