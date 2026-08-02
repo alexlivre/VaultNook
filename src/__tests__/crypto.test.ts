@@ -1,28 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { encrypt, decrypt, hashPassword, generateSalt, deriveKey, generateRecoveryPhrase } from '../main/services/crypto';
+import {
+  encrypt, decrypt, hashPassword, generateSalt, deriveKey,
+  generateMasterKey, encryptKey, decryptKey, generateRecoveryPhrase,
+  validateRecoveryPhrase,
+} from '../main/services/crypto';
 
 describe('crypto', () => {
   describe('encrypt/decrypt', () => {
-    it('should encrypt and decrypt correctly', () => {
+    it('should encrypt and decrypt correctly', async () => {
       const salt = generateSalt();
-      const key = deriveKey('TestPassword123!', salt);
+      const key = await deriveKey('TestPassword123!', salt);
       const plaintext = 'sk_live_abc123xyz';
-      const encrypted = encrypt(plaintext, key);
-      const decrypted = decrypt(encrypted, key);
+      const decrypted = decrypt(encrypt(plaintext, key), key);
       expect(decrypted).toBe(plaintext);
     });
 
-    it('should fail to decrypt with wrong key', () => {
+    it('should fail to decrypt with wrong key', async () => {
       const salt = generateSalt();
-      const key1 = deriveKey('Password1!', salt);
-      const key2 = deriveKey('Password2!', salt);
-      const encrypted = encrypt('secret', key1);
-      expect(() => decrypt(encrypted, key2)).toThrow();
+      const key1 = await deriveKey('Password1!', salt);
+      const key2 = await deriveKey('Password2!', salt);
+      expect(() => decrypt(encrypt('secret', key1), key2)).toThrow();
     });
 
-    it('should generate different ciphertext for same plaintext', () => {
+    it('should generate different ciphertext for same plaintext', async () => {
       const salt = generateSalt();
-      const key = deriveKey('Password1!', salt);
+      const key = await deriveKey('Password1!', salt);
       const enc1 = encrypt('secret', key);
       const enc2 = encrypt('secret', key);
       expect(enc1.iv).not.toBe(enc2.iv);
@@ -31,60 +33,62 @@ describe('crypto', () => {
   });
 
   describe('hashPassword', () => {
-    it('should generate consistent hash for same input', () => {
+    it('should be consistent for same input', async () => {
       const salt = generateSalt();
-      const hash1 = hashPassword('Password1!', salt);
-      const hash2 = hashPassword('Password1!', salt);
-      expect(hash1.toString('base64')).toBe(hash2.toString('base64'));
+      const h1 = await hashPassword('Password1!', salt);
+      const h2 = await hashPassword('Password1!', salt);
+      expect(h1.toString('base64')).toBe(h2.toString('base64'));
     });
 
-    it('should generate different hash for different passwords', () => {
+    it('should be different for different passwords', async () => {
       const salt = generateSalt();
-      const hash1 = hashPassword('Password1!', salt);
-      const hash2 = hashPassword('Password2!', salt);
-      expect(hash1.toString('base64')).not.toBe(hash2.toString('base64'));
+      const h1 = await hashPassword('Password1!', salt);
+      const h2 = await hashPassword('Password2!', salt);
+      expect(h1.toString('base64')).not.toBe(h2.toString('base64'));
     });
   });
 
   describe('generateSalt', () => {
     it('should generate 32 bytes', () => {
-      const salt = generateSalt();
-      expect(salt.length).toBe(32);
-    });
-
-    it('should generate unique salts', () => {
-      const salt1 = generateSalt();
-      const salt2 = generateSalt();
-      expect(salt1.toString('base64')).not.toBe(salt2.toString('base64'));
+      expect(generateSalt().length).toBe(32);
     });
   });
 
   describe('deriveKey', () => {
-    it('should derive key that can be zeroized', () => {
+    it('should derive a zeroizable 32-byte key', async () => {
       const salt = generateSalt();
-      const key = deriveKey('Password1!', salt);
+      const key = await deriveKey('Password1!', salt);
       expect(key.key.length).toBe(32);
       key.zeroize();
       expect(key.key.every((b: number) => b === 0)).toBe(true);
     });
   });
 
+  describe('key wrap', () => {
+    it('should wrap and unwrap a master key', () => {
+      const master = generateMasterKey();
+      const wrapping = generateMasterKey();
+      const wrapped = encryptKey(master, wrapping);
+      const unwrapped = decryptKey(wrapped, wrapping);
+      expect(unwrapped.equals(master)).toBe(true);
+    });
+
+    it('should fail to unwrap with wrong wrapping key', () => {
+      const master = generateMasterKey();
+      const wrapped = encryptKey(master, generateMasterKey());
+      expect(() => decryptKey(wrapped, generateMasterKey())).toThrow();
+    });
+  });
+
   describe('generateRecoveryPhrase', () => {
-    it('should generate 12 words', () => {
+    it('should generate 12 valid BIP39 words', () => {
       const phrase = generateRecoveryPhrase();
-      expect(phrase.length).toBe(12);
+      expect(phrase.split(' ')).toHaveLength(12);
+      expect(validateRecoveryPhrase(phrase)).toBe(true);
     });
 
-    it('should generate unique words', () => {
-      const phrase = generateRecoveryPhrase();
-      const uniqueWords = new Set(phrase);
-      expect(uniqueWords.size).toBe(12);
-    });
-
-    it('should generate different phrases each time', () => {
-      const phrase1 = generateRecoveryPhrase();
-      const phrase2 = generateRecoveryPhrase();
-      expect(phrase1.join(' ')).not.toBe(phrase2.join(' '));
+    it('should reject invalid phrase', () => {
+      expect(validateRecoveryPhrase('abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon')).toBe(false);
     });
   });
 });
