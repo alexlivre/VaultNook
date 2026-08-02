@@ -103,8 +103,6 @@ interface ToastActionElement {
   onClick: () => void;
 }
 
-type ToastAction = React.ReactElement | ToastActionElement;
-
 export {
   type ToastProps,
   type ToastActionElement as ToastAction,

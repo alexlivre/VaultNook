@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
 import { readFile, writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
-import { randomBytes, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 import {
   generateSalt,
   hashPassword,
@@ -10,7 +10,6 @@ import {
   encrypt,
   decrypt,
   generateRecoveryPhrase,
-  validateRecoveryPhrase,
   type VaultKey,
   type EncryptedData,
 } from './crypto';
@@ -333,7 +332,8 @@ export async function getVaultMetadata(vaultId: string): Promise<{ totalItems: n
       command: 0,
       link: 0,
     };
-    (data.items || []).forEach((item: any) => {
+    const items = (data.items || []) as { category: string }[];
+    items.forEach((item) => {
       itemsByCategory[item.category] = (itemsByCategory[item.category] || 0) + 1;
     });
     return {

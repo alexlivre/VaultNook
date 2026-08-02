@@ -94,7 +94,7 @@ const windowControls = {
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
   onMaximizeChange: (callback: (maximized: boolean) => void) => {
-    const handler = (_event: any, maximized: boolean) => callback(maximized);
+    const handler = (_event: unknown, maximized: boolean) => callback(maximized);
     ipcRenderer.on('window:maximize-changed', handler);
     return () => ipcRenderer.removeListener('window:maximize-changed', handler);
   },

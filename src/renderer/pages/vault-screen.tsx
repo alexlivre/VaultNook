@@ -100,7 +100,6 @@ export function VaultScreen() {
     favoritesFirst,
     selectedItemIds,
     revealedItemIds,
-    isLocked,
     activeVaultName,
     setActiveCategory,
     setSearchQuery,
@@ -452,25 +451,35 @@ export function VaultScreen() {
           ) : (
             <div ref={listContainerRef} className="flex-1 overflow-hidden">
               <List
-                defaultHeight={listHeight}
-                rowCount={displayItems.length}
-                rowHeight={72}
-                rowComponent={VaultRow}
-                rowProps={{
-                  items: displayItems,
-                  revealedItemIds,
-                  copiedId,
-                  selectedItemIds,
-                  onCopy: handleCopy,
-                  onEdit: setEditItem,
-                  onDelete: handleDelete,
-                  onToggleFavorite: handleToggleFavorite,
-                  onToggleReveal: toggleReveal,
-                  onSelect: toggleItemSelection,
-                  onActivity: handleActivity,
-                }}
+                height={listHeight}
+                width="100%"
+                itemCount={displayItems.length}
+                itemSize={72}
                 overscanCount={5}
-              />
+              >
+                {({ index, style }) => (
+                  <VaultRow
+                    index={index}
+                    style={style}
+                    ariaAttributes={{
+                      'aria-posinset': index + 1,
+                      'aria-setsize': displayItems.length,
+                      role: 'listitem',
+                    }}
+                    items={displayItems}
+                    revealedItemIds={revealedItemIds}
+                    copiedId={copiedId}
+                    selectedItemIds={selectedItemIds}
+                    onCopy={handleCopy}
+                    onEdit={setEditItem}
+                    onDelete={handleDelete}
+                    onToggleFavorite={handleToggleFavorite}
+                    onToggleReveal={toggleReveal}
+                    onSelect={toggleItemSelection}
+                    onActivity={handleActivity}
+                  />
+                )}
+              </List>
             </div>
           )}
         </div>

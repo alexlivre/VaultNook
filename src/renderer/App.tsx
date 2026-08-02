@@ -11,10 +11,7 @@ export function App() {
     screen,
     setScreen,
     setVaults,
-    setActiveVaultId,
-    setActiveVaultName,
     setIsLocked,
-    setItems,
   } = useVaultStore();
 
   const [unlockVaultId, setUnlockVaultId] = React.useState<string | null>(null);

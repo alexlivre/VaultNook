@@ -19,7 +19,6 @@ import {
 } from '../components/ui/dropdown-menu';
 import {
   AlertDialog,
-  AlertDialogTrigger,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -70,8 +69,8 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
       const api = window.devVaultApi;
       await api.exportVaultFile(vaultId);
       toast({ title: 'Vault exportado', variant: 'success' });
-    } catch (err: any) {
-      toast({ title: err.message || 'Erro ao exportar', variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: err instanceof Error ? err.message : 'Erro ao exportar', variant: 'destructive' });
     }
   };
 
@@ -84,8 +83,8 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
         title: nowHidden ? 'Vault ocultado' : 'Vault revelado',
         variant: 'default',
       });
-    } catch (err: any) {
-      toast({ title: err.message || 'Erro', variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: err instanceof Error ? err.message : 'Erro', variant: 'destructive' });
     }
   };
 
@@ -100,8 +99,8 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
       setDeletePassword('');
       await loadVaults();
       toast({ title: 'Vault excluído', variant: 'success' });
-    } catch (err: any) {
-      setDeleteError(err.message || 'Senha incorreta');
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : 'Senha incorreta');
     } finally {
       setDeleting(false);
     }
@@ -115,8 +114,8 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
         await loadVaults();
         toast({ title: 'Vault importado com sucesso', variant: 'success' });
       }
-    } catch (err: any) {
-      toast({ title: err.message || 'Erro ao importar', variant: 'destructive' });
+    } catch (err: unknown) {
+      toast({ title: err instanceof Error ? err.message : 'Erro ao importar', variant: 'destructive' });
     }
   };
 

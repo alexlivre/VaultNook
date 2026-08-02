@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Item, Category, VaultInfo, ExportData, ImportResult, CreateItem, EditItem, ChangePassword, VaultEntry } from '../types';
+import type { Item, Category, VaultEntry } from '../types';
 
 export type AppScreen = 'loading' | 'vault-manager' | 'create-password' | 'unlock' | 'vault';
 export type AutoLockOption = 30 | 60 | 300 | 900 | 0;

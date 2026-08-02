@@ -19,8 +19,8 @@ import {
 } from './ui/select';
 import { useVaultStore } from '../stores/vault-store';
 import { generatePassword } from '../lib/utils';
-import type { Item, Category, CreateItem } from '../types';
-import { CategoryLabel, CategoryColorName } from '../types';
+import type { Item, Category } from '../types';
+import { CategoryLabel } from '../types';
 
 interface AddEditItemDialogProps {
   open: boolean;
@@ -77,8 +77,8 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       const items = await api.getItems();
       useVaultStore.getState().setItems(items);
       onSaved();
-    } catch (err: any) {
-      setError(err.message || 'Erro ao salvar');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao salvar');
     } finally {
       setLoading(false);
     }

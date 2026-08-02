@@ -53,8 +53,8 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
       const api = window.devVaultApi;
       await api.createVault(password, vaultName.trim(), hint.trim());
       onCreated();
-    } catch (err: any) {
-      setError(err.message || 'Erro ao criar cofre');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar cofre');
     } finally {
       setLoading(false);
     }

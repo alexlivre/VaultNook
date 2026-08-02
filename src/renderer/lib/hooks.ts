@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
 import { useVaultStore } from '../stores/vault-store';
-import type { AutoLockOption } from '../stores/vault-store';
 import type { ToastProps } from '../components/ui/toast';
 
 // Simple toast management hook
@@ -59,8 +58,6 @@ export function useAutoLock() {
 
 // Keyboard shortcuts hook
 export function useKeyboardShortcuts(handlers: Record<string, () => void>) {
-  const [lastKey, setLastKey] = useState<string>('');
-
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       // Ignore if typing in an input

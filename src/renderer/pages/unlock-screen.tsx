@@ -40,9 +40,9 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
       useVaultStore.getState().setActiveVaultId(result.vaultId);
       useVaultStore.getState().setActiveVaultName(vaultName);
       onUnlocked();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setAttempts((a) => a + 1);
-      setError(err.message || 'Senha incorreta');
+      setError(err instanceof Error ? err.message : 'Senha incorreta');
       inputRef.current?.focus();
     } finally {
       setLoading(false);

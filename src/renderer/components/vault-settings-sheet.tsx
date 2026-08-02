@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useToast } from './toast-provider';
-import { useVaultStore } from '../stores/vault-store';
+import { useVaultStore, type AutoLockOption } from '../stores/vault-store';
 import { cn } from '../lib/utils';
 import { CategoryLabel, type Category } from '../types';
 
@@ -86,8 +86,8 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      setPasswordError(err.message || 'Erro ao alterar senha');
+    } catch (err: unknown) {
+      setPasswordError(err instanceof Error ? err.message : 'Erro ao alterar senha');
     }
   };
 
@@ -99,13 +99,13 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
       const api = window.devVaultApi;
       await api.deleteVault(deletePassword);
       onLock();
-    } catch (err: any) {
-      setDeleteError(err.message || 'Senha incorreta');
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : 'Senha incorreta');
     }
   };
 
   const handleTimerChange = async (timer: number) => {
-    setAutoLockTimer(timer as any);
+    setAutoLockTimer(timer as AutoLockOption);
     try {
       const api = window.devVaultApi;
       await api.saveSettings(timer);

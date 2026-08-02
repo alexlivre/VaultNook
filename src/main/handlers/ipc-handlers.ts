@@ -36,14 +36,14 @@ const ImportedVaultSchema = z.object({
 function validate<T>(schema: z.ZodType<T>, data: unknown): T {
   const result = schema.safeParse(data);
   if (!result.success) {
-    throw new Error(result.error.issues.map((e: any) => e.message).join(', '));
+    throw new Error(result.error.issues.map((e) => e.message).join(', '));
   }
   return result.data;
 }
 
 export function registerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.INIT, async () => {
-    const migratedId = await registry.migrateOldVault();
+    await registry.migrateOldVault();
     const vaults = await registry.loadRegistry();
     return { vaults };
   });
