@@ -18,7 +18,7 @@ const api = {
 
   listVaults: (): Promise<VaultEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.LIST_VAULTS),
 
-  createVault: (password: string, name: string, hint?: string): Promise<{ recoveryPhrase: string[]; vaultId: string }> => {
+  createVault: (password: string, name: string, hint?: string): Promise<{ recoveryPhrase: string; vaultId: string }> => {
     const data = CreatePasswordPayload.parse({ password, name, hint: hint || '' });
     return ipcRenderer.invoke(IPC_CHANNELS.CREATE_PASSWORD, data);
   },

@@ -18,6 +18,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
   const [hint, setHint] = React.useState('');
   const [error, setError] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const [newPhrase, setNewPhrase] = React.useState<string | null>(null);
 
   const strength = getPasswordStrength(password);
   const requirements = [
@@ -51,14 +52,46 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
     setLoading(true);
     try {
       const api = window.devVaultApi;
-      await api.createVault(password, vaultName.trim(), hint.trim());
-      onCreated();
+      const result = await api.createVault(password, vaultName.trim(), hint.trim());
+      setNewPhrase(result.recoveryPhrase);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao criar cofre');
     } finally {
       setLoading(false);
     }
   };
+
+  if (newPhrase) {
+    return (
+      <div className="flex min-h-screen flex-col bg-surface-base">
+        <header className="titlebar flex items-center justify-end h-11 shrink-0">
+          <WindowControls />
+        </header>
+        <div className="flex flex-1 items-center justify-center p-8">
+          <div className="w-full max-w-md space-y-6 text-center">
+            <h1 className="text-2xl font-semibold text-text-primary">Guarde sua frase de recuperação</h1>
+            <p className="text-sm text-text-muted">
+              Anote estas 12 palavras em local seguro. Com elas você recupera o cofre
+              se esquecer a senha. Elas não podem ser recuperadas depois.
+            </p>
+            <div className="rounded-lg border border-border-default bg-surface-raised p-4">
+              <ol className="grid grid-cols-2 gap-2 text-sm text-text-primary">
+                {newPhrase.split(' ').map((word, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted">{i + 1}.</span>
+                    {word}
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <Button variant="primary" className="w-full h-10" onClick={onCreated}>
+              Continuar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-base">

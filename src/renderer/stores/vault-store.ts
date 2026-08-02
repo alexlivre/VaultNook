@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Item, Category, VaultEntry } from '../types';
 
-export type AppScreen = 'loading' | 'vault-manager' | 'create-password' | 'unlock' | 'vault';
+export type AppScreen = 'loading' | 'vault-manager' | 'create-password' | 'unlock' | 'recovery' | 'vault';
 export type AutoLockOption = 30 | 60 | 300 | 900 | 0;
 
 interface VaultState {

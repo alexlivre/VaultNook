@@ -3,6 +3,7 @@ import { useVaultStore } from './stores/vault-store';
 import { ToastContextProvider } from './components/toast-provider';
 import { CreatePasswordScreen } from './pages/create-password-screen';
 import { UnlockScreen } from './pages/unlock-screen';
+import { RecoveryScreen } from './pages/recovery-screen';
 import { VaultScreen } from './pages/vault-screen';
 import { VaultManagerScreen } from './pages/vault-manager-screen';
 
@@ -62,6 +63,15 @@ export function App() {
     setIsLocked(false);
   }, [setScreen, setIsLocked]);
 
+  const handleForgotPassword = React.useCallback(() => {
+    setScreen('recovery');
+  }, [setScreen]);
+
+  const handleRecovered = React.useCallback(() => {
+    setScreen('vault');
+    setIsLocked(false);
+  }, [setScreen, setIsLocked]);
+
   const handleBackToManager = React.useCallback(() => {
     setUnlockVaultId(null);
     setUnlockVaultName('');
@@ -84,6 +94,15 @@ export function App() {
           vaultName={unlockVaultName}
           vaultHint={unlockVaultHint}
           onUnlocked={handleUnlocked}
+          onBack={handleBackToManager}
+          onForgot={handleForgotPassword}
+        />
+      )}
+      {screen === 'recovery' && unlockVaultId && (
+        <RecoveryScreen
+          vaultId={unlockVaultId}
+          vaultName={unlockVaultName}
+          onRecovered={handleRecovered}
           onBack={handleBackToManager}
         />
       )}
