@@ -11,7 +11,9 @@ export default defineConfig({
       name: 'relax-csp-for-hmr',
       apply: 'serve',
       transformIndexHtml: (html) =>
-        html.replace("connect-src 'none'", "connect-src 'self' ws:"),
+        html
+          .replace("connect-src 'none'", "connect-src 'self' ws:")
+          .replace("script-src 'self'", "script-src 'self' 'unsafe-eval'"),
     },
   ],
   resolve: {
