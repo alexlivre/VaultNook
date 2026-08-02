@@ -23,7 +23,7 @@ const api = {
     return ipcRenderer.invoke(IPC_CHANNELS.CREATE_PASSWORD, data);
   },
 
-  unlock: (password: string, vaultId: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string }> => {
+  unlock: (password: string, vaultId: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string; recoveryPhrase?: string }> => {
     const data = UnlockPayload.parse({ password, vaultId });
     return ipcRenderer.invoke(IPC_CHANNELS.UNLOCK, data);
   },
@@ -85,8 +85,8 @@ const api = {
   toggleHidden: (vaultId: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.TOGGLE_HIDDEN, vaultId),
 
-  migrateEncryption: (): Promise<boolean> =>
-    ipcRenderer.invoke(IPC_CHANNELS.MIGRATE_ENCRYPTION),
+  recover: (vaultId: string, phrase: string, newPassword: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RECOVER, { vaultId, phrase, newPassword }),
 };
 
 const windowControls = {

@@ -30,6 +30,28 @@ interface StoredItem {
   updatedAt: number;
 }
 
+interface LegacyItem {
+  id?: string;
+  name?: string;
+  value: string | EncryptedData;
+  description?: string;
+  category: Category;
+  favorite?: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+interface LegacyVaultData {
+  version?: string;
+  formatVersion?: number;
+  createdAt?: number;
+  passwordHash: string;
+  salt: string;
+  hint?: string;
+  items?: LegacyItem[];
+  settings?: { autoLockTimer: number };
+}
+
 interface VaultData {
   version: string;
   formatVersion: 3;
@@ -138,11 +160,11 @@ export async function createVault(password: string, hint: string = ''): Promise<
   return { recoveryPhrase: phrase, vaultId: id };
 }
 
-async function migrateToV3(parsed: any, passwordKey: VaultKey, salt: Buffer): Promise<string> {
+async function migrateToV3(parsed: LegacyVaultData, passwordKey: VaultKey, salt: Buffer): Promise<string> {
   const masterKey = toVaultKey(generateMasterKey());
   const newPhrase = generateRecoveryPhrase();
 
-  const items: StoredItem[] = (parsed.items || []).map((item: any) => {
+  const items: StoredItem[] = (parsed.items || []).map((item) => {
     const rawValue = typeof item.value === 'object' ? decrypt(item.value, passwordKey) : (item.value as string);
     return {
       id: item.id || randomUUID(),

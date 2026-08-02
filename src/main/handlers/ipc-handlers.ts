@@ -88,10 +88,34 @@ export function registerIpcHandlers(): void {
     );
     const loaded = await vault.loadVault(vaultId);
     if (!loaded) throw new Error('Vault não encontrado');
-    const success = await vault.unlockVault(password);
-    if (!success) throw new Error('Senha incorreta');
+    const result = await vault.unlockVault(password);
+    if (!result.ok) throw new Error('Senha incorreta');
     await registry.updateVault(vaultId, { lastOpened: Date.now() });
-    return { items: await vault.getAllItems(), info: await vault.getVaultInfo(), vaultId };
+    return {
+      items: await vault.getAllItems(),
+      info: await vault.getVaultInfo(),
+      vaultId,
+      recoveryPhrase: result.recoveryPhrase,
+    };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.RECOVER, async (_event, data: unknown) => {
+    const { vaultId, phrase, newPassword } = validate(
+      z.object({
+        vaultId: z.string().min(1),
+        phrase: z.string().min(1),
+        newPassword: z.string().min(8),
+      }),
+      data
+    );
+    const ok = await vault.recoverVault(vaultId, phrase, newPassword);
+    if (!ok) throw new Error('Frase de recuperação inválida');
+    await registry.updateVault(vaultId, { lastOpened: Date.now() });
+    return {
+      items: await vault.getAllItems(),
+      info: await vault.getVaultInfo(),
+      vaultId,
+    };
   });
 
   ipcMain.handle(IPC_CHANNELS.LOCK, async () => {
@@ -111,7 +135,7 @@ export function registerIpcHandlers(): void {
     const vaultId = vault.getActiveVaultId();
     if (!vaultId) throw new Error('Nenhum vault ativo');
     const canUnlock = await vault.unlockVault(password);
-    if (!canUnlock) throw new Error('Senha incorreta');
+    if (!canUnlock.ok) throw new Error('Senha incorreta');
     await vault.deleteVault(vaultId);
     return true;
   });
@@ -120,7 +144,7 @@ export function registerIpcHandlers(): void {
     const { vaultId, password } = validate(DeleteVaultEntrySchema, data);
     await vault.loadVault(vaultId);
     const canUnlock = await vault.unlockVault(password);
-    if (!canUnlock) throw new Error('Senha incorreta');
+    if (!canUnlock.ok) throw new Error('Senha incorreta');
     await vault.deleteVault(vaultId);
     await registry.removeVault(vaultId);
     return true;
@@ -262,10 +286,6 @@ export function registerIpcHandlers(): void {
     if (!entry) throw new Error('Vault não encontrado');
     await registry.updateVault(id, { hidden: !entry.hidden });
     return !entry.hidden;
-  });
-
-  ipcMain.handle(IPC_CHANNELS.MIGRATE_ENCRYPTION, async () => {
-    return vault.migrateToFullEncryption();
   });
 }
 
