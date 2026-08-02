@@ -277,12 +277,6 @@ Distribuído sob licença MIT. Veja `LICENSE` para mais informações.
 
 ---
 
-## 🎨 Créditos
-
-Ícone da aplicação: "Ícone de Bloqueado com chave" by Google on [Icon-Icons.com](https://icon-icons.com/pt/authors/368-google).
-
----
-
 <div align="center">
   <sub>Feito com 💜 por <a href="https://github.com/alexlivre">alexlivre</a></sub>
 </div>
