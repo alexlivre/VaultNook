@@ -125,9 +125,19 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.CHANGE_PASSWORD, async (_event, data: unknown) => {
     const validated = validate(ChangePasswordSchema, data);
-    const success = await vault.changePassword(validated);
-    if (!success) throw new Error('Senha atual incorreta');
-    return true;
+    const result = await vault.changePassword(validated);
+    if (!result.ok) throw new Error('Senha atual incorreta');
+    return { recoveryPhrase: result.recoveryPhrase };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REGENERATE_RECOVERY_PHRASE, async (_event, data: unknown) => {
+    const { password } = validate(
+      z.object({ password: z.string().min(1) }),
+      data
+    );
+    const result = await vault.regenerateRecoveryPhrase(password);
+    if (!result.ok) throw new Error('Senha incorreta');
+    return { recoveryPhrase: result.recoveryPhrase };
   });
 
   ipcMain.handle(IPC_CHANNELS.DELETE_VAULT, async (_event, data: unknown) => {

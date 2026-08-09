@@ -165,20 +165,45 @@ describe('vault v3', () => {
   });
 
   describe('changePassword', () => {
-    it('should re-wrap master key and keep items', async () => {
+    it('should re-wrap master key, keep items and generate a new recovery phrase', async () => {
       await vault.createVault('Password1!');
       await vault.addItem(makeItem());
-      const ok = await vault.changePassword({
+      const result = await vault.changePassword({
         currentPassword: 'Password1!',
         newPassword: 'NewPassword1!',
         confirmPassword: 'NewPassword1!',
       });
-      expect(ok).toBe(true);
+      expect(result.ok).toBe(true);
+      expect(result.recoveryPhrase).toBeDefined();
+      expect(result.recoveryPhrase!.split(' ')).toHaveLength(12);
       vault.lockVault();
       const unlockNew = await vault.unlockVault('NewPassword1!');
       expect(unlockNew.ok).toBe(true);
       const items = await vault.getAllItems();
       expect(items[0].value).toBe('sk_test_123');
+    });
+  });
+
+  describe('regenerateRecoveryPhrase', () => {
+    it('should generate a new phrase with correct password', async () => {
+      const created = await vault.createVault('Password1!');
+      const oldPhrase = created.recoveryPhrase;
+      await vault.addItem(makeItem());
+
+      const result = await vault.regenerateRecoveryPhrase('Password1!');
+      expect(result.ok).toBe(true);
+      expect(result.recoveryPhrase).toBeDefined();
+      expect(result.recoveryPhrase).not.toBe(oldPhrase);
+
+      vault.lockVault();
+      const ok = await vault.recoverVault(created.vaultId, result.recoveryPhrase!, 'NewPassword1!');
+      expect(ok).toBe(true);
+    });
+
+    it('should reject wrong password', async () => {
+      await vault.createVault('Password1!');
+      const result = await vault.regenerateRecoveryPhrase('WrongPassword!');
+      expect(result.ok).toBe(false);
     });
   });
 

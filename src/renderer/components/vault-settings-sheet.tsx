@@ -8,6 +8,7 @@ import { useToast } from './toast-provider';
 import { useVaultStore, type AutoLockOption } from '../stores/vault-store';
 import { cn } from '../lib/utils';
 import { CategoryLabel, type Category } from '../types';
+import { RecoveryPhraseActions } from './recovery-phrase-actions';
 
 interface VaultSettingsSheetProps {
   open: boolean;
@@ -31,6 +32,11 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [passwordError, setPasswordError] = React.useState('');
+
+  const [newPhrase, setNewPhrase] = React.useState<string | null>(null);
+  const [regenerateOpen, setRegenerateOpen] = React.useState(false);
+  const [regeneratePassword, setRegeneratePassword] = React.useState('');
+  const [regenerateError, setRegenerateError] = React.useState('');
 
   const [deleteConfirm, setDeleteConfirm] = React.useState(false);
   const [deletePassword, setDeletePassword] = React.useState('');
@@ -80,14 +86,32 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
 
     try {
       const api = window.devVaultApi;
-      await api.changePassword({ currentPassword, newPassword, confirmPassword });
+      const result = await api.changePassword({ currentPassword, newPassword, confirmPassword });
       toast({ title: 'Senha alterada com sucesso', variant: 'success' });
       setChangingPassword(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      if (result.recoveryPhrase) {
+        setNewPhrase(result.recoveryPhrase);
+      }
     } catch (err: unknown) {
       setPasswordError(err instanceof Error ? err.message : 'Erro ao alterar senha');
+    }
+  };
+
+  const handleRegenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegenerateError('');
+    try {
+      const api = window.devVaultApi;
+      const result = await api.regenerateRecoveryPhrase(regeneratePassword);
+      setRegenerateOpen(false);
+      setRegeneratePassword('');
+      setNewPhrase(result.recoveryPhrase);
+      toast({ title: 'Nova frase gerada', variant: 'success' });
+    } catch (err: unknown) {
+      setRegenerateError(err instanceof Error ? err.message : 'Senha incorreta');
     }
   };
 
@@ -197,6 +221,33 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
                 </div>
               </div>
 
+              {/* New recovery phrase */}
+              {newPhrase && (
+                <div className="space-y-3 rounded-lg border border-border-default bg-surface-base p-3">
+                  <p className="text-sm font-medium text-text-primary">Nova frase de recuperação</p>
+                  <p className="text-xs text-text-muted">
+                    A frase anterior deixou de valer. Guarde esta em local seguro.
+                  </p>
+                  <ol className="grid grid-cols-2 gap-1 text-xs text-text-primary">
+                    {newPhrase.split(' ').map((word, i) => (
+                      <li key={i} className="flex items-center gap-1.5">
+                        <span className="text-text-muted">{i + 1}.</span>
+                        {word}
+                      </li>
+                    ))}
+                  </ol>
+                  <RecoveryPhraseActions phrase={newPhrase} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-8 text-xs"
+                    onClick={() => setNewPhrase(null)}
+                  >
+                    Entendi, guardei a frase
+                  </Button>
+                </div>
+              )}
+
               {/* Change Password */}
               <div className="space-y-3">
                 <button
@@ -241,6 +292,40 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
                     )}
                     <Button type="submit" size="sm" className="w-full h-8 text-xs">
                       Alterar senha
+                    </Button>
+                  </form>
+                )}
+              </div>
+
+              {/* Regenerate recovery phrase */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => setRegenerateOpen(!regenerateOpen)}
+                  className="flex items-center gap-2 text-sm font-medium text-text-primary hover:text-text-secondary transition-colors cursor-pointer"
+                >
+                  <KeyRound className="h-4 w-4" />
+                  Gerar nova frase de recuperação
+                </button>
+                {regenerateOpen && (
+                  <form onSubmit={handleRegenerate} className="space-y-3 pl-6">
+                    <p className="text-xs text-text-muted">
+                      A frase atual deixará de funcionar. Confirme sua senha mestra para gerar uma nova.
+                    </p>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Senha atual</Label>
+                      <Input
+                        type="password"
+                        value={regeneratePassword}
+                        onChange={(e) => setRegeneratePassword(e.target.value)}
+                        className="h-8 text-xs"
+                        autoFocus
+                      />
+                    </div>
+                    {regenerateError && (
+                      <p className="text-xs text-destructive">{regenerateError}</p>
+                    )}
+                    <Button type="submit" size="sm" className="w-full h-8 text-xs" disabled={!regeneratePassword}>
+                      Gerar nova frase
                     </Button>
                   </form>
                 )}

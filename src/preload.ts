@@ -30,8 +30,11 @@ const api = {
 
   lock: (): Promise<boolean> => ipcRenderer.invoke(IPC_CHANNELS.LOCK),
 
-  changePassword: (data: ChangePassword): Promise<boolean> =>
+  changePassword: (data: ChangePassword): Promise<{ recoveryPhrase?: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.CHANGE_PASSWORD, data),
+
+  regenerateRecoveryPhrase: (password: string): Promise<{ recoveryPhrase: string }> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REGENERATE_RECOVERY_PHRASE, { password }),
 
   deleteVault: (password: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.DELETE_VAULT, { password }),

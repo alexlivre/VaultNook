@@ -243,20 +243,46 @@ export function getActiveVaultId(): string | null {
   return activeVaultId;
 }
 
-export async function changePassword(data: ChangePassword): Promise<boolean> {
-  if (!vaultData || !vaultKey) return false;
+export async function changePassword(data: ChangePassword): Promise<{ ok: boolean; recoveryPhrase?: string }> {
+  if (!vaultData || !vaultKey) return { ok: false };
   const salt = Buffer.from(vaultData.salt, 'base64');
   const currentHash = await hashPassword(data.currentPassword, salt);
   const expected = Buffer.from(vaultData.passwordHash, 'base64');
   if (currentHash.length !== expected.length || !timingSafeEqual(currentHash, expected)) {
-    return false;
+    return { ok: false };
   }
   const newPasswordKey = await deriveKey(data.newPassword, salt);
   vaultData.masterKeyWrap = encryptKey(vaultKey.key, newPasswordKey.key);
   vaultData.passwordHash = (await hashPassword(data.newPassword, salt)).toString('base64');
   newPasswordKey.zeroize();
+
+  const newPhrase = generateRecoveryPhrase();
+  const newRecoveryKey = await deriveKey(newPhrase, salt);
+  vaultData.recoveryKeyWrap = encryptKey(vaultKey.key, newRecoveryKey.key);
+  vaultData.recoveryHash = (await hashPassword(newPhrase, salt)).toString('base64');
+  newRecoveryKey.zeroize();
+
   await saveVault();
-  return true;
+  return { ok: true, recoveryPhrase: newPhrase };
+}
+
+export async function regenerateRecoveryPhrase(currentPassword: string): Promise<{ ok: boolean; recoveryPhrase?: string }> {
+  if (!vaultData || !vaultKey) return { ok: false };
+  const salt = Buffer.from(vaultData.salt, 'base64');
+  const currentHash = await hashPassword(currentPassword, salt);
+  const expected = Buffer.from(vaultData.passwordHash, 'base64');
+  if (currentHash.length !== expected.length || !timingSafeEqual(currentHash, expected)) {
+    return { ok: false };
+  }
+
+  const newPhrase = generateRecoveryPhrase();
+  const newRecoveryKey = await deriveKey(newPhrase, salt);
+  vaultData.recoveryKeyWrap = encryptKey(vaultKey.key, newRecoveryKey.key);
+  vaultData.recoveryHash = (await hashPassword(newPhrase, salt)).toString('base64');
+  newRecoveryKey.zeroize();
+
+  await saveVault();
+  return { ok: true, recoveryPhrase: newPhrase };
 }
 
 export async function recoverVault(vaultId: string, phrase: string, newPassword: string): Promise<boolean> {
