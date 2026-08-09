@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { WindowControls } from '../components/window-controls';
+import { RecoveryPhraseActions } from '../components/recovery-phrase-actions';
 import type { AutoLockOption } from '../stores/vault-store';
 
 interface UnlockScreenProps {
@@ -156,6 +157,7 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
                 </li>
               ))}
             </ol>
+            <RecoveryPhraseActions phrase={migrationPhrase} />
             <Button variant="primary" className="w-full h-10" onClick={() => { setMigrationPhrase(null); onUnlocked(); }}>
               Continuar
             </Button>

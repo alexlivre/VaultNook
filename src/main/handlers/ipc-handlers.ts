@@ -188,6 +188,23 @@ export function registerIpcHandlers(): void {
     return true;
   });
 
+  ipcMain.handle(IPC_CHANNELS.SAVE_RECOVERY_PHRASE, async (_event, phrase: unknown) => {
+    const { phrase: validated } = validate(
+      z.object({ phrase: z.string().min(1) }),
+      { phrase }
+    );
+    const result = await dialog.showSaveDialog({
+      title: 'Salvar frase de recuperação',
+      defaultPath: `devvault-recovery-phrase.txt`,
+      filters: [{ name: 'Texto', extensions: ['txt'] }],
+    });
+    if (!result.canceled && result.filePath) {
+      await writeFile(result.filePath, validated, 'utf-8');
+      return true;
+    }
+    return false;
+  });
+
   ipcMain.handle(IPC_CHANNELS.EXPORT, async () => {
     const data = await vault.exportVault();
     const result = await dialog.showSaveDialog({

@@ -87,6 +87,9 @@ const api = {
 
   recover: (vaultId: string, phrase: string, newPassword: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.RECOVER, { vaultId, phrase, newPassword }),
+
+  saveRecoveryPhrase: (phrase: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SAVE_RECOVERY_PHRASE, phrase),
 };
 
 const windowControls = {

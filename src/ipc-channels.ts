@@ -22,4 +22,5 @@ export const IPC_CHANNELS = {
   GET_VAULT_HINT: 'vault:get-vault-hint',
   TOGGLE_HIDDEN: 'vault:toggle-hidden',
   RECOVER: 'vault:recover',
+  SAVE_RECOVERY_PHRASE: 'recovery:save-phrase',
 } as const;

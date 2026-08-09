@@ -6,6 +6,7 @@ import { Label } from '../components/ui/label';
 import { Progress } from '../components/ui/progress';
 import { getPasswordStrength } from '../lib/utils';
 import { WindowControls } from '../components/window-controls';
+import { RecoveryPhraseActions } from '../components/recovery-phrase-actions';
 
 interface CreatePasswordScreenProps {
   onCreated: () => void;
@@ -84,6 +85,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
                 ))}
               </ol>
             </div>
+            <RecoveryPhraseActions phrase={newPhrase} />
             <Button variant="primary" className="w-full h-10" onClick={onCreated}>
               Continuar
             </Button>
