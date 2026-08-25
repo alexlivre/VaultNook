@@ -7,6 +7,7 @@ const CreatePasswordPayload = z.object({
   password: z.string().min(8),
   name: z.string().min(1),
   hint: z.string().optional().default(''),
+  color: z.string().optional(),
 });
 const UnlockPayload = z.object({ password: z.string().min(1), vaultId: z.string().min(1) });
 const DeleteVaultEntryPayload = z.object({ vaultId: z.string().min(1), password: z.string().min(1) });
@@ -18,8 +19,8 @@ const api = {
 
   listVaults: (): Promise<VaultEntry[]> => ipcRenderer.invoke(IPC_CHANNELS.LIST_VAULTS),
 
-  createVault: (password: string, name: string, hint?: string): Promise<{ recoveryPhrase: string; vaultId: string }> => {
-    const data = CreatePasswordPayload.parse({ password, name, hint: hint || '' });
+  createVault: (password: string, name: string, hint?: string, color?: string): Promise<{ recoveryPhrase: string; vaultId: string }> => {
+    const data = CreatePasswordPayload.parse({ password, name, hint: hint || '', color });
     return ipcRenderer.invoke(IPC_CHANNELS.CREATE_PASSWORD, data);
   },
 
@@ -57,6 +58,12 @@ const api = {
   removeItem: (id: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.REMOVE_ITEM, id),
 
+  removeItems: (ids: string[]): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.REMOVE_ITEMS, ids),
+
+  moveCategoryItems: (ids: string[], category: Category): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.MOVE_CATEGORY_ITEMS, { ids, category }),
+
   exportVault: (): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT),
 
@@ -88,11 +95,26 @@ const api = {
   toggleHidden: (vaultId: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.TOGGLE_HIDDEN, vaultId),
 
+  renameVault: (vaultId: string, name: string, color?: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.RENAME_VAULT, { vaultId, name, color }),
+
+  openExternal: (url: string): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.OPEN_EXTERNAL, url),
+
+  clearClipboard: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLEAR_CLIPBOARD),
+
   recover: (vaultId: string, phrase: string, newPassword: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string }> =>
     ipcRenderer.invoke(IPC_CHANNELS.RECOVER, { vaultId, phrase, newPassword }),
 
   saveRecoveryPhrase: (phrase: string): Promise<boolean> =>
     ipcRenderer.invoke(IPC_CHANNELS.SAVE_RECOVERY_PHRASE, phrase),
+
+  onVaultLockedBySystem: (callback: () => void) => {
+    const handler = () => callback();
+    ipcRenderer.on('vault-locked-by-system', handler);
+    return () => ipcRenderer.removeListener('vault-locked-by-system', handler);
+  },
 };
 
 const windowControls = {
@@ -111,3 +133,4 @@ export type WindowControls = typeof windowControls;
 
 contextBridge.exposeInMainWorld('devVaultApi', api);
 contextBridge.exposeInMainWorld('windowControls', windowControls);
+

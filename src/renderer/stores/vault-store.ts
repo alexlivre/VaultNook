@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Item, Category, VaultEntry } from '../types';
+import type { Item, Category, VaultEntry, SortOption } from '../types';
 
 export type AppScreen = 'loading' | 'vault-manager' | 'create-password' | 'unlock' | 'recovery' | 'vault';
 export type AutoLockOption = 30 | 60 | 300 | 900 | 0;
@@ -20,6 +20,7 @@ interface VaultState {
   activeCategory: Category | 'all';
   searchQuery: string;
   favoritesFirst: boolean;
+  sortOption: SortOption;
 
   // UI
   isSearching: boolean;
@@ -41,9 +42,12 @@ interface VaultState {
   addItem: (item: Item) => void;
   updateItem: (item: Item) => void;
   removeItem: (id: string) => void;
+  removeItems: (ids: string[]) => void;
+  moveCategoryItems: (ids: string[], category: Category) => void;
   setActiveCategory: (category: Category | 'all') => void;
   setSearchQuery: (query: string) => void;
   setFavoritesFirst: (value: boolean) => void;
+  setSortOption: (sort: SortOption) => void;
   toggleFavorite: (id: string) => void;
   toggleReveal: (id: string) => void;
   toggleItemSelection: (id: string) => void;
@@ -72,6 +76,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   activeCategory: 'all',
   searchQuery: '',
   favoritesFirst: false,
+  sortOption: 'recent',
 
   // UI
   isSearching: false,
@@ -100,9 +105,24 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       items: state.items.filter((i) => i.id !== id),
       selectedItemIds: new Set([...state.selectedItemIds].filter((sid) => sid !== id)),
     })),
+  removeItems: (ids) => {
+    const idSet = new Set(ids);
+    set((state) => ({
+      items: state.items.filter((i) => !idSet.has(i.id)),
+      selectedItemIds: new Set([...state.selectedItemIds].filter((sid) => !idSet.has(sid))),
+    }));
+  },
+  moveCategoryItems: (ids, category) => {
+    const idSet = new Set(ids);
+    set((state) => ({
+      items: state.items.map((i) => (idSet.has(i.id) ? { ...i, category, updatedAt: Date.now() } : i)),
+      selectedItemIds: new Set(),
+    }));
+  },
   setActiveCategory: (category) => set({ activeCategory: category, searchQuery: '' }),
   setSearchQuery: (query) => set({ searchQuery: query, isSearching: query.length > 0 }),
   setFavoritesFirst: (value) => set({ favoritesFirst: value }),
+  setSortOption: (sort) => set({ sortOption: sort }),
   toggleFavorite: (id) =>
     set((state) => ({
       items: state.items.map((i) =>
@@ -140,42 +160,80 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   // Computed
   filteredItems: () => {
-    const { items, activeCategory, searchQuery, favoritesFirst } = get();
+    const { items, activeCategory, searchQuery, favoritesFirst, sortOption } = get();
     let filtered = items;
 
     if (activeCategory !== 'all') {
       filtered = filtered.filter((item) => item.category === activeCategory);
     }
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      // Parse category filter syntax: cat:api query
-      const catMatch = query.match(/^cat:(\w+)\s+(.*)/);
+    if (searchQuery.trim()) {
+      let query = searchQuery.toLowerCase().trim();
+      let catFilter: string | null = null;
+      let tagFilter: string | null = null;
+      let onlyFavs = false;
+
+      // Extract cat:<category>
+      const catMatch = query.match(/cat:(\w+)/);
       if (catMatch) {
-        const catFilter = catMatch[1] as Category;
-        const searchTerm = catMatch[2];
-        filtered = filtered.filter(
-          (item) =>
-            item.category === catFilter &&
-            item.name.toLowerCase().includes(searchTerm)
-        );
-      } else {
-        filtered = filtered.filter((item) =>
-          item.name.toLowerCase().includes(query)
-        );
+        catFilter = catMatch[1];
+        query = query.replace(/cat:\w+/, '').trim();
       }
+
+      // Extract tag:<tag>
+      const tagMatch = query.match(/tag:([^\s]+)/);
+      if (tagMatch) {
+        tagFilter = tagMatch[1];
+        query = query.replace(/tag:[^\s]+/, '').trim();
+      }
+
+      // Extract is:fav or is:favorite
+      if (query.includes('is:fav') || query.includes('is:favorite')) {
+        onlyFavs = true;
+        query = query.replace(/is:fav(orite)?/, '').trim();
+      }
+
+      filtered = filtered.filter((item) => {
+        if (catFilter && item.category !== catFilter) return false;
+        if (onlyFavs && !item.favorite) return false;
+        if (tagFilter) {
+          const hasTag = (item.tags || []).some((t) => t.toLowerCase().includes(tagFilter!));
+          if (!hasTag) return false;
+        }
+        if (!query) return true;
+
+        const nameMatch = item.name.toLowerCase().includes(query);
+        const descMatch = (item.description || '').toLowerCase().includes(query);
+        const tagMatchFound = (item.tags || []).some((t) => t.toLowerCase().includes(query));
+        return nameMatch || descMatch || tagMatchFound;
+      });
     }
 
-    if (favoritesFirst) {
-      filtered.sort((a, b) => {
+    // Sort items
+    filtered = [...filtered].sort((a, b) => {
+      if (favoritesFirst) {
         if (a.favorite && !b.favorite) return -1;
         if (!a.favorite && b.favorite) return 1;
-        return b.updatedAt - a.updatedAt;
-      });
-    } else {
-      filtered.sort((a, b) => b.updatedAt - a.updatedAt);
-    }
+      }
+
+      switch (sortOption) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'updated':
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        case 'favorites':
+          if (a.favorite && !b.favorite) return -1;
+          if (!a.favorite && b.favorite) return 1;
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        case 'recent':
+        default:
+          return (b.createdAt || 0) - (a.createdAt || 0);
+      }
+    });
 
     return filtered;
   },
 }));
+

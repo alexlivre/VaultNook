@@ -222,5 +222,43 @@ describe('vault v3', () => {
       await vault.removeItem('test-id');
       expect(await vault.getAllItems()).toHaveLength(0);
     });
+
+    it('should support item tags and maintain encryption', async () => {
+      await vault.addItem(makeItem({ id: 'item-tag', tags: ['prod', 'finance'] }));
+      const items = await vault.getAllItems();
+      expect(items[0].tags).toEqual(['prod', 'finance']);
+
+      // Check stored raw file
+      const raw = JSON.parse(readFileSync(singleVaultFile(), 'utf-8'));
+      expect(raw.items[0].tags).toBeDefined();
+      expect(typeof raw.items[0].tags).toBe('object');
+      expect(raw.items[0].tags.ciphertext).toBeDefined();
+
+      // Update tags
+      await vault.editItem(makeItem({ id: 'item-tag', tags: ['dev', 'cloud'] }));
+      const updated = await vault.getAllItems();
+      expect(updated[0].tags).toEqual(['dev', 'cloud']);
+    });
+
+    it('should support bulk remove and bulk move category', async () => {
+      await vault.addItem(makeItem({ id: 'item-1', category: 'api' }));
+      await vault.addItem(makeItem({ id: 'item-2', category: 'api' }));
+      await vault.addItem(makeItem({ id: 'item-3', category: 'prompt' }));
+
+      expect(await vault.getAllItems()).toHaveLength(3);
+
+      // Bulk move
+      await vault.moveCategoryItems(['item-1', 'item-2'], 'command');
+      let items = await vault.getAllItems();
+      expect(items.find((i) => i.id === 'item-1')?.category).toBe('command');
+      expect(items.find((i) => i.id === 'item-2')?.category).toBe('command');
+
+      // Bulk remove
+      await vault.removeItems(['item-1', 'item-3']);
+      items = await vault.getAllItems();
+      expect(items).toHaveLength(1);
+      expect(items[0].id).toBe('item-2');
+    });
   });
 });
+

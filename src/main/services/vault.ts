@@ -24,6 +24,7 @@ interface StoredItem {
   name: EncryptedData;
   value: EncryptedData;
   description: EncryptedData | null;
+  tags?: EncryptedData | null;
   category: Category;
   favorite: boolean;
   createdAt: number;
@@ -35,6 +36,7 @@ interface LegacyItem {
   name?: string;
   value: string | EncryptedData;
   description?: string;
+  tags?: string[];
   category: Category;
   favorite?: boolean;
   createdAt?: number;
@@ -166,11 +168,15 @@ async function migrateToV3(parsed: LegacyVaultData, passwordKey: VaultKey, salt:
 
   const items: StoredItem[] = (parsed.items || []).map((item) => {
     const rawValue = typeof item.value === 'object' ? decrypt(item.value, passwordKey) : (item.value as string);
+    const tagsEnc = Array.isArray(item.tags) && item.tags.length > 0
+      ? encrypt(JSON.stringify(item.tags), masterKey)
+      : null;
     return {
       id: item.id || randomUUID(),
       name: encrypt(item.name || '', masterKey),
       value: encrypt(rawValue || '', masterKey),
       description: item.description ? encrypt(item.description, masterKey) : null,
+      tags: tagsEnc,
       category: item.category as Category,
       favorite: !!item.favorite,
       createdAt: item.createdAt ?? Date.now(),
@@ -371,24 +377,40 @@ export async function getVaultMetadata(vaultId: string) {
 
 export async function getAllItems(): Promise<Item[]> {
   if (!vaultData || !vaultKey) return [];
-  return vaultData.items.map((item) => ({
-    id: item.id,
-    name: decrypt(item.name, vaultKey!),
-    value: decrypt(item.value, vaultKey!),
-    description: item.description ? decrypt(item.description, vaultKey!) : '',
-    category: item.category,
-    favorite: item.favorite,
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-  }));
+  return vaultData.items.map((item) => {
+    let tags: string[] = [];
+    if (item.tags) {
+      try {
+        const rawTags = decrypt(item.tags, vaultKey!);
+        tags = JSON.parse(rawTags);
+      } catch {
+        tags = [];
+      }
+    }
+    return {
+      id: item.id,
+      name: decrypt(item.name, vaultKey!),
+      value: decrypt(item.value, vaultKey!),
+      description: item.description ? decrypt(item.description, vaultKey!) : '',
+      tags: Array.isArray(tags) ? tags : [],
+      category: item.category,
+      favorite: item.favorite,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    };
+  });
 }
 
 function toStoredItem(item: Item): StoredItem {
+  const tagsEnc = Array.isArray(item.tags) && item.tags.length > 0
+    ? encrypt(JSON.stringify(item.tags), vaultKey!)
+    : null;
   return {
     id: item.id,
     name: encrypt(item.name, vaultKey!),
     value: encrypt(item.value, vaultKey!),
     description: item.description ? encrypt(item.description, vaultKey!) : null,
+    tags: tagsEnc,
     category: item.category,
     favorite: item.favorite,
     createdAt: item.createdAt,
@@ -411,6 +433,25 @@ export async function editItem(item: Item): Promise<void> {
 export async function removeItem(id: string): Promise<void> {
   if (!vaultData) return;
   vaultData.items = vaultData.items.filter((i) => i.id !== id);
+  await saveVault();
+}
+
+export async function removeItems(ids: string[]): Promise<void> {
+  if (!vaultData) return;
+  const idSet = new Set(ids);
+  vaultData.items = vaultData.items.filter((i) => !idSet.has(i.id));
+  await saveVault();
+}
+
+export async function moveCategoryItems(ids: string[], newCategory: Category): Promise<void> {
+  if (!vaultData) return;
+  const idSet = new Set(ids);
+  vaultData.items = vaultData.items.map((i) => {
+    if (idSet.has(i.id)) {
+      return { ...i, category: newCategory, updatedAt: Date.now() };
+    }
+    return i;
+  });
   await saveVault();
 }
 
@@ -470,6 +511,7 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
         name: item.name,
         value: item.value,
         description: item.description ?? null,
+        tags: item.tags ?? null,
         category: item.category,
         favorite: !!item.favorite,
         createdAt: item.createdAt ?? Date.now(),
@@ -477,11 +519,15 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
       };
     } else {
       const rawValue = typeof item.value === 'string' ? item.value : '';
+      const tagsEnc = Array.isArray(item.tags) && item.tags.length > 0
+        ? encrypt(JSON.stringify(item.tags), vaultKey!)
+        : null;
       stored = {
         id: item.id || randomUUID(),
         name: encrypt(item.name || '', vaultKey!),
         value: encrypt(rawValue, vaultKey!),
         description: item.description ? encrypt(item.description, vaultKey!) : null,
+        tags: tagsEnc,
         category: item.category as Category,
         favorite: !!item.favorite,
         createdAt: item.createdAt ?? Date.now(),

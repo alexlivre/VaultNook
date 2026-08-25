@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app } from 'electron';
+import { ipcMain, dialog, app, shell, clipboard } from 'electron';
 import { writeFile, readFile } from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -60,21 +60,23 @@ export function registerIpcHandlers(): void {
         hidden: entry.hidden,
         hasHint: entry.hint.length > 0,
         itemCount: meta?.totalItems || 0,
+        color: entry.color,
       };
     }));
   });
 
   ipcMain.handle(IPC_CHANNELS.CREATE_PASSWORD, async (_event, data: unknown) => {
-    const { password, name, hint } = validate(
+    const { password, name, hint, color } = validate(
       z.object({
         password: z.string().min(8),
         name: z.string().min(1, 'Nome é obrigatório'),
         hint: z.string().optional().default(''),
+        color: z.string().optional(),
       }),
       data
     );
     const result = await vault.createVault(password, hint);
-    await registry.addVault(name, hint, result.vaultId);
+    await registry.addVault(name, hint, result.vaultId, color);
     return result;
   });
 
@@ -313,6 +315,56 @@ export function registerIpcHandlers(): void {
     if (!entry) throw new Error('Vault não encontrado');
     await registry.updateVault(id, { hidden: !entry.hidden });
     return !entry.hidden;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.RENAME_VAULT, async (_event, data: unknown) => {
+    const { vaultId, name, color } = validate(
+      z.object({
+        vaultId: z.string().min(1),
+        name: z.string().min(1, 'Nome é obrigatório'),
+        color: z.string().optional(),
+      }),
+      data
+    );
+    await registry.renameVault(vaultId, name, color);
+    return true;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.REMOVE_ITEMS, async (_event, ids: unknown) => {
+    const validated = validate(z.array(z.string()), ids);
+    await vault.removeItems(validated);
+    return true;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.MOVE_CATEGORY_ITEMS, async (_event, data: unknown) => {
+    const { ids, category } = validate(
+      z.object({
+        ids: z.array(z.string()),
+        category: z.enum(['api', 'prompt', 'command', 'link']),
+      }),
+      data
+    );
+    await vault.moveCategoryItems(ids, category);
+    return true;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.OPEN_EXTERNAL, async (_event, url: unknown) => {
+    const validated = validate(z.string(), url);
+    try {
+      const parsed = new URL(validated);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        await shell.openExternal(validated);
+        return true;
+      }
+    } catch {
+      // invalid URL
+    }
+    return false;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CLEAR_CLIPBOARD, async () => {
+    clipboard.clear();
+    return true;
   });
 }
 

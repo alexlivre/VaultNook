@@ -9,6 +9,7 @@ import {
   Trash2,
   MoreHorizontal,
   FolderLock,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import {
@@ -16,6 +17,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '../components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -33,6 +35,7 @@ import { useToast } from '../components/toast-provider';
 import { useVaultStore } from '../stores/vault-store';
 import type { VaultEntry } from '../types';
 import { WindowControls } from '../components/window-controls';
+import { RenameVaultDialog } from '../components/rename-vault-dialog';
 
 interface VaultManagerScreenProps {
   onSelectVault: (vaultId: string) => void;
@@ -47,6 +50,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
   const [deletePassword, setDeletePassword] = React.useState('');
   const [deleteError, setDeleteError] = React.useState('');
   const [deleting, setDeleting] = React.useState(false);
+  const [renameTargetVault, setRenameTargetVault] = React.useState<VaultEntry | null>(null);
 
   const displayVaults = showHidden ? vaults : vaults.filter((v) => !v.hidden);
 
@@ -173,6 +177,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
                 key={vault.id}
                 vault={vault}
                 onSelect={() => onSelectVault(vault.id)}
+                onRename={() => setRenameTargetVault(vault)}
                 onExport={() => handleExport(vault.id)}
                 onToggleHidden={() => handleToggleHidden(vault.id)}
                 onDelete={() => setDeleteVaultId(vault.id)}
@@ -205,6 +210,16 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
           </button>
         )}
       </div>
+
+      {/* Rename / Color Dialog */}
+      <RenameVaultDialog
+        open={renameTargetVault !== null}
+        onOpenChange={(open) => {
+          if (!open) setRenameTargetVault(null);
+        }}
+        vault={renameTargetVault}
+        onRenamed={loadVaults}
+      />
 
       {/* Delete dialog */}
       <AlertDialog
@@ -259,21 +274,34 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 interface VaultCardProps {
   vault: VaultEntry;
   onSelect: () => void;
+  onRename: () => void;
   onExport: () => void;
   onToggleHidden: () => void;
   onDelete: () => void;
   formatDate: (ts: number) => string;
 }
 
-function VaultCard({ vault, onSelect, onExport, onToggleHidden, onDelete, formatDate }: VaultCardProps) {
+function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDelete, formatDate }: VaultCardProps) {
+  const accentColor = vault.color || 'var(--color-category-all)';
+
   return (
     <div
       className="group flex items-center gap-4 rounded-lg border border-border-default bg-surface-raised px-4 py-3.5 transition-all duration-150 hover:bg-surface-hover hover:shadow-sm cursor-pointer"
+      style={{
+        borderLeftWidth: '3px',
+        borderLeftColor: accentColor,
+      }}
       onClick={onSelect}
     >
       {/* Icon */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-category-all/10">
-        <Lock className="h-5 w-5 text-category-all" />
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+        style={{
+          backgroundColor: `color-mix(in srgb, ${accentColor} 15%, transparent)`,
+          color: accentColor,
+        }}
+      >
+        <Lock className="h-5 w-5" />
       </div>
 
       {/* Info */}
@@ -311,6 +339,10 @@ function VaultCard({ vault, onSelect, onExport, onToggleHidden, onDelete, format
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onRename}>
+              <Pencil className="h-3.5 w-3.5 mr-2" />
+              Personalizar / Renomear
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onExport}>
               <Download className="h-3.5 w-3.5 mr-2" />
               Exportar
@@ -322,6 +354,7 @@ function VaultCard({ vault, onSelect, onExport, onToggleHidden, onDelete, format
                 <><EyeOff className="h-3.5 w-3.5 mr-2" />Ocultar</>
               )}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
               <Trash2 className="h-3.5 w-3.5 mr-2" />
               Excluir

@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, powerMonitor } from 'electron';
 import path from 'node:path';
 import { registerIpcHandlers } from './main/handlers/ipc-handlers';
+import * as vault from './main/services/vault';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -52,9 +53,20 @@ function registerWindowControls() {
   ipcMain.on('window:close', () => mainWindow?.close());
 }
 
+function registerPowerEvents() {
+  const onSystemLock = () => {
+    vault.lockVault();
+    mainWindow?.webContents.send('vault-locked-by-system');
+  };
+
+  powerMonitor.on('suspend', onSystemLock);
+  powerMonitor.on('lock-screen', onSystemLock);
+}
+
 app.whenReady().then(() => {
   registerIpcHandlers();
   registerWindowControls();
+  registerPowerEvents();
   createWindow();
 });
 

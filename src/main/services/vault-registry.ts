@@ -12,6 +12,7 @@ export interface VaultRegistryEntry {
   lastOpened: number;
   hidden: boolean;
   hint: string;
+  color?: string;
 }
 
 interface VaultRegistryData {
@@ -62,7 +63,7 @@ export async function getVault(id: string): Promise<VaultRegistryEntry | undefin
   return registry?.vaults.find((v) => v.id === id);
 }
 
-export async function addVault(name: string, hint: string, vaultId?: string): Promise<VaultRegistryEntry> {
+export async function addVault(name: string, hint: string, vaultId?: string, color?: string): Promise<VaultRegistryEntry> {
   if (!registry) await loadRegistry();
   await ensureRestricted();
   const id = vaultId || crypto.randomUUID();
@@ -74,6 +75,7 @@ export async function addVault(name: string, hint: string, vaultId?: string): Pr
     lastOpened: Date.now(),
     hidden: false,
     hint,
+    color: color || undefined,
   };
   registry!.vaults.push(entry);
   await saveRegistry();
@@ -85,6 +87,17 @@ export async function updateVault(id: string, partial: Partial<VaultRegistryEntr
   const entry = registry!.vaults.find((v) => v.id === id);
   if (!entry) return;
   Object.assign(entry, partial);
+  await saveRegistry();
+}
+
+export async function renameVault(id: string, name: string, color?: string): Promise<void> {
+  if (!registry) await loadRegistry();
+  const entry = registry!.vaults.find((v) => v.id === id);
+  if (!entry) return;
+  entry.name = name;
+  if (color !== undefined) {
+    entry.color = color;
+  }
   await saveRegistry();
 }
 

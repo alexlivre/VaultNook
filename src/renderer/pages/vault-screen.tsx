@@ -12,20 +12,42 @@ import {
   Settings,
   Command,
   Copy,
+  Trash2,
+  FolderInput,
 } from 'lucide-react';
 import { useVaultStore } from '../stores/vault-store';
 import { useToast } from '../components/toast-provider';
 import { useAutoLock, useKeyboardShortcuts } from '../lib/hooks';
 import { Button } from '../components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '../components/ui/alert-dialog';
 import { cn } from '../lib/utils';
 import type { Category, Item } from '../types';
+import { CategoryLabel } from '../types';
 import { AddEditItemDialog } from '../components/add-edit-item-dialog';
 import { VaultSettingsSheet } from '../components/vault-settings-sheet';
 import { WindowControls } from '../components/window-controls';
 import { ItemCard } from '../components/item-card';
 import { CommandPalette } from '../components/command-palette';
 import { VaultToolbar } from '../components/vault-toolbar';
+import { CommandParamDialog } from '../components/command-param-dialog';
+import { PromptViewDialog } from '../components/prompt-view-dialog';
+import { VaultAuditDialog } from '../components/vault-audit-dialog';
 import { List } from 'react-window';
 
 const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; color: string }[] = [
@@ -41,12 +63,19 @@ interface VaultRowProps {
   revealedItemIds: Set<string>;
   copiedId: string | null;
   selectedItemIds: Set<string>;
+  focusedIndex: number;
   onCopy: (value: string, itemId: string) => void;
   onEdit: (item: Item) => void;
   onDelete: (id: string, name: string) => void;
+  onDuplicate: (item: Item) => void;
+  onMoveCategory: (id: string, category: Category) => void;
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
+  onOpenExternal: (url: string) => void;
+  onOpenParamDialog: (item: Item) => void;
+  onOpenPromptDialog: (item: Item) => void;
+  onTagClick: (tag: string) => void;
   onActivity: () => void;
 }
 
@@ -58,12 +87,19 @@ function VaultRow({
   revealedItemIds,
   copiedId,
   selectedItemIds,
+  focusedIndex,
   onCopy,
   onEdit,
   onDelete,
+  onDuplicate,
+  onMoveCategory,
   onToggleFavorite,
   onToggleReveal,
   onSelect,
+  onOpenExternal,
+  onOpenParamDialog,
+  onOpenPromptDialog,
+  onTagClick,
   onActivity,
 }: {
   ariaAttributes: { 'aria-posinset': number; 'aria-setsize': number; role: 'listitem' };
@@ -79,12 +115,19 @@ function VaultRow({
         isRevealed={revealedItemIds.has(item.id)}
         isCopied={copiedId === item.id}
         isSelected={selectedItemIds.has(item.id)}
+        isFocused={focusedIndex === index}
         onCopy={onCopy}
         onEdit={onEdit}
         onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        onMoveCategory={onMoveCategory}
         onToggleFavorite={onToggleFavorite}
         onToggleReveal={onToggleReveal}
         onSelect={onSelect}
+        onOpenExternal={onOpenExternal}
+        onOpenParamDialog={onOpenParamDialog}
+        onOpenPromptDialog={onOpenPromptDialog}
+        onTagClick={onTagClick}
         onActivity={onActivity}
         disableAnimation
       />
@@ -98,17 +141,21 @@ export function VaultScreen() {
     activeCategory,
     searchQuery,
     favoritesFirst,
+    sortOption,
     selectedItemIds,
     revealedItemIds,
     activeVaultName,
     setActiveCategory,
     setSearchQuery,
     setFavoritesFirst,
+    setSortOption,
     toggleFavorite,
     toggleReveal,
     toggleItemSelection,
     clearSelection,
     removeItem,
+    removeItems,
+    moveCategoryItems,
     filteredItems,
     setScreen,
     setIsLocked,
@@ -121,10 +168,17 @@ export function VaultScreen() {
   const [editItem, setEditItem] = React.useState<Item | null>(null);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
+  const [auditOpen, setAuditOpen] = React.useState(false);
+  const [paramItem, setParamItem] = React.useState<Item | null>(null);
+  const [promptItem, setPromptItem] = React.useState<Item | null>(null);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = React.useState(false);
+  const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
+
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const deletedItemRef = React.useRef<Item | null>(null);
   const undoTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clipboardTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [listHeight, setListHeight] = React.useState(600);
   const listContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -139,9 +193,21 @@ export function VaultScreen() {
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
+  // Listen for system lock/suspend events
+  React.useEffect(() => {
+    const api = window.devVaultApi;
+    if (api?.onVaultLockedBySystem) {
+      return api.onVaultLockedBySystem(() => {
+        setIsLocked(true);
+        setScreen('vault-manager');
+        toast({ title: 'Cofre bloqueado pelo sistema', variant: 'default' });
+      });
+    }
+  }, [setIsLocked, setScreen, toast]);
+
   const displayItems = React.useMemo(
     () => filteredItems(),
-    [items, activeCategory, searchQuery, favoritesFirst]
+    [items, activeCategory, searchQuery, favoritesFirst, sortOption]
   );
 
   const handleCopy = React.useCallback(
@@ -149,8 +215,21 @@ export function VaultScreen() {
       try {
         await navigator.clipboard.writeText(value);
         setCopiedId(itemId);
-        toast({ title: 'Copiado!', variant: 'success' });
+        toast({ title: 'Copiado para área de transferência!', variant: 'success' });
         setTimeout(() => setCopiedId(null), 1500);
+
+        // Auto-clear clipboard for sensitive items after 30 seconds
+        if (clipboardTimeoutRef.current) {
+          clearTimeout(clipboardTimeoutRef.current);
+        }
+        clipboardTimeoutRef.current = setTimeout(async () => {
+          try {
+            await window.devVaultApi.clearClipboard();
+            toast({ title: 'Área de transferência limpa por segurança', variant: 'default' });
+          } catch {
+            // silent
+          }
+        }, 30000);
       } catch {
         toast({ title: 'Erro ao copiar', variant: 'destructive' });
       }
@@ -169,6 +248,84 @@ export function VaultScreen() {
     }
   }, [setIsLocked, setScreen]);
 
+  const handleOpenExternal = React.useCallback(async (url: string) => {
+    try {
+      let finalUrl = url.trim();
+      if (!/^https?:\/\//i.test(finalUrl)) {
+        finalUrl = 'https://' + finalUrl;
+      }
+      await window.devVaultApi.openExternal(finalUrl);
+    } catch {
+      toast({ title: 'URL inválida', variant: 'destructive' });
+    }
+  }, [toast]);
+
+  const handleDuplicate = React.useCallback(
+    async (item: Item) => {
+      try {
+        const api = window.devVaultApi;
+        await api.addItem({
+          name: `${item.name} (cópia)`,
+          value: item.value,
+          description: item.description,
+          category: item.category,
+          tags: item.tags || [],
+        });
+        const updated = await api.getItems();
+        useVaultStore.getState().setItems(updated);
+        toast({ title: 'Item duplicado com sucesso', variant: 'success' });
+      } catch {
+        toast({ title: 'Erro ao duplicar item', variant: 'destructive' });
+      }
+    },
+    [toast]
+  );
+
+  const handleMoveCategory = React.useCallback(
+    async (id: string, category: Category) => {
+      try {
+        const api = window.devVaultApi;
+        await api.moveCategoryItems([id], category);
+        moveCategoryItems([id], category);
+        toast({ title: `Movido para ${CategoryLabel[category]}`, variant: 'success' });
+      } catch {
+        toast({ title: 'Erro ao mover item', variant: 'destructive' });
+      }
+    },
+    [moveCategoryItems, toast]
+  );
+
+  const handleBulkMove = React.useCallback(
+    async (category: Category) => {
+      const ids = Array.from(selectedItemIds);
+      if (ids.length === 0) return;
+      try {
+        const api = window.devVaultApi;
+        await api.moveCategoryItems(ids, category);
+        moveCategoryItems(ids, category);
+        toast({ title: `${ids.length} itens movidos para ${CategoryLabel[category]}`, variant: 'success' });
+      } catch {
+        toast({ title: 'Erro ao mover itens em lote', variant: 'destructive' });
+      }
+    },
+    [selectedItemIds, moveCategoryItems, toast]
+  );
+
+  const handleBulkDelete = React.useCallback(async () => {
+    const ids = Array.from(selectedItemIds);
+    if (ids.length === 0) return;
+    try {
+      const api = window.devVaultApi;
+      await api.removeItems(ids);
+      removeItems(ids);
+      setBulkDeleteConfirmOpen(false);
+      toast({ title: `${ids.length} itens excluídos`, variant: 'default' });
+    } catch {
+      toast({ title: 'Erro ao excluir itens em lote', variant: 'destructive' });
+    }
+  }, [selectedItemIds, removeItems, toast]);
+
+  // Keyboard navigation & Shortcuts
   useKeyboardShortcuts({
     'new-item': () => setAddDialogOpen(true),
     search: () => searchInputRef.current?.focus(),
@@ -186,8 +343,43 @@ export function VaultScreen() {
     escape: () => {
       if (selectedItemIds.size > 0) clearSelection();
       else if (searchQuery) setSearchQuery('');
+      setFocusedIndex(-1);
     },
   });
+
+  // Global key listener for list navigation (ArrowUp, ArrowDown, Enter, Space)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.min(prev + 1, displayItems.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      } else if (e.key === 'Enter') {
+        if (focusedIndex >= 0 && focusedIndex < displayItems.length) {
+          e.preventDefault();
+          const item = displayItems[focusedIndex];
+          handleCopy(item.value, item.id);
+        }
+      } else if (e.key === ' ') {
+        if (focusedIndex >= 0 && focusedIndex < displayItems.length) {
+          e.preventDefault();
+          const item = displayItems[focusedIndex];
+          if (item.category === 'api') {
+            toggleReveal(item.id);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [displayItems, focusedIndex, handleCopy, toggleReveal]);
 
   // Activity tracking for auto-lock
   React.useEffect(() => {
@@ -202,7 +394,7 @@ export function VaultScreen() {
 
   const handleDelete = React.useCallback(
     async (id: string, name: string) => {
-      const item = items.find(i => i.id === id);
+      const item = items.find((i) => i.id === id);
       if (!item) return;
 
       deletedItemRef.current = item;
@@ -363,20 +555,24 @@ export function VaultScreen() {
           }}
         />
 
-        {/* Search + Filters */}
+        {/* Search + Sort + Filters + Audit */}
         <VaultToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           favoritesFirst={favoritesFirst}
           onToggleFavoritesFirst={() => setFavoritesFirst(!favoritesFirst)}
+          sortOption={sortOption}
+          onSortChange={setSortOption}
+          onOpenAudit={() => setAuditOpen(true)}
           searchInputRef={searchInputRef}
         />
 
-        {/* Bulk action bar */}
+        {/* Bulk Action Bar */}
         {selectedItemIds.size > 0 && (
           <div className="mx-4 mb-1 flex items-center gap-2 rounded-md bg-category-all/10 border border-category-all/20 px-3 py-1.5 text-xs shrink-0">
-            <span className="text-text-secondary">{selectedItemIds.size} selecionado(s)</span>
+            <span className="text-text-secondary font-medium">{selectedItemIds.size} selecionado(s)</span>
             <div className="flex-1" />
+
             <Button
               variant="ghost"
               size="sm"
@@ -388,15 +584,42 @@ export function VaultScreen() {
               }}
             >
               <Copy className="h-3 w-3 mr-1" />
-              Copiar todos
+              Copiar valores
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 text-xs">
+                  <FolderInput className="h-3 w-3 mr-1" />
+                  Mover para...
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(['api', 'prompt', 'command', 'link'] as Category[]).map((cat) => (
+                  <DropdownMenuItem key={cat} onClick={() => handleBulkMove(cat)}>
+                    {CategoryLabel[cat]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="ghost"
               size="sm"
               className="h-6 text-xs text-destructive hover:text-destructive"
+              onClick={() => setBulkDeleteConfirmOpen(true)}
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Excluir selecionados
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-text-muted hover:text-text-primary"
               onClick={clearSelection}
             >
-              Limpar
+              Desmarcar
             </Button>
           </div>
         )}
@@ -460,12 +683,19 @@ export function VaultScreen() {
                   revealedItemIds,
                   copiedId,
                   selectedItemIds,
+                  focusedIndex,
                   onCopy: handleCopy,
                   onEdit: setEditItem,
                   onDelete: handleDelete,
+                  onDuplicate: handleDuplicate,
+                  onMoveCategory: handleMoveCategory,
                   onToggleFavorite: handleToggleFavorite,
                   onToggleReveal: toggleReveal,
                   onSelect: toggleItemSelection,
+                  onOpenExternal: handleOpenExternal,
+                  onOpenParamDialog: (it: Item) => setParamItem(it),
+                  onOpenPromptDialog: (it: Item) => setPromptItem(it),
+                  onTagClick: (tag: string) => setSearchQuery(`tag:${tag}`),
                   onActivity: handleActivity,
                 }}
                 overscanCount={5}
@@ -500,7 +730,9 @@ export function VaultScreen() {
             <span className="text-text-muted/50">|</span>
             <span>Ctrl+F</span>
             <span className="text-text-muted/50">|</span>
-            <span>Ctrl+E</span>
+            <span>↑ / ↓ navegar</span>
+            <span className="text-text-muted/50">|</span>
+            <span>Enter copiar</span>
           </div>
         </div>
 
@@ -513,7 +745,7 @@ export function VaultScreen() {
           }}
           onSaved={() => {
             setAddDialogOpen(false);
-            toast({ title: 'Item adicionado', variant: 'success' });
+            toast({ title: 'Item adicionado com sucesso', variant: 'success' });
           }}
         />
 
@@ -525,7 +757,7 @@ export function VaultScreen() {
           editItem={editItem}
           onSaved={() => {
             setEditItem(null);
-            toast({ title: 'Item atualizado', variant: 'success' });
+            toast({ title: 'Item atualizado com sucesso', variant: 'success' });
           }}
         />
 
@@ -535,12 +767,53 @@ export function VaultScreen() {
           onLock={handleLock}
         />
 
+        <VaultAuditDialog
+          open={auditOpen}
+          onOpenChange={setAuditOpen}
+          onEditItem={(item) => setEditItem(item)}
+        />
+
+        <CommandParamDialog
+          open={paramItem !== null}
+          onOpenChange={(open) => {
+            if (!open) setParamItem(null);
+          }}
+          item={paramItem}
+        />
+
+        <PromptViewDialog
+          open={promptItem !== null}
+          onOpenChange={(open) => {
+            if (!open) setPromptItem(null);
+          }}
+          item={promptItem}
+        />
+
+        {/* Bulk Delete Confirm Alert */}
+        <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir {selectedItemIds.size} itens selecionados?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação removerá todos os itens selecionados do cofre. Tem certeza?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleBulkDelete}>
+                Excluir itens
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Command Palette */}
         <CommandPalette
           isOpen={commandPaletteOpen}
           onClose={() => setCommandPaletteOpen(false)}
           commands={[
             { label: 'Adicionar item', shortcut: 'Ctrl+N', action: () => { setAddDialogOpen(true); } },
+            { label: 'Auditoria de segurança', shortcut: '', action: () => { setAuditOpen(true); } },
             { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { const api = window.devVaultApi; await api.exportVault(); } },
             { label: 'Travar vault', shortcut: 'Ctrl+L', action: () => { handleLock(); } },
           ]}

@@ -37,6 +37,7 @@ export const ItemSchema = z.object({
   value: z.string().min(1, 'Valor é obrigatório'),
   description: z.string().default(''),
   category: Category,
+  tags: z.array(z.string()).default([]),
   favorite: z.boolean().default(false),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -48,6 +49,7 @@ export const CreateItemSchema = z.object({
   value: z.string().min(1, 'Valor é obrigatório'),
   description: z.string().max(500).default(''),
   category: Category,
+  tags: z.array(z.string()).default([]),
 });
 export type CreateItem = z.infer<typeof CreateItemSchema>;
 
@@ -68,6 +70,7 @@ export const CreatePasswordSchema = z
     confirmPassword: z.string(),
     name: z.string().min(1, 'Nome do vault é obrigatório'),
     hint: z.string().optional().default(''),
+    color: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Senhas não conferem',
@@ -132,4 +135,9 @@ export interface VaultEntry {
   hidden: boolean;
   hasHint: boolean;
   itemCount: number;
+  color?: string;
+  icon?: string;
 }
+
+export type SortOption = 'recent' | 'updated' | 'name-asc' | 'name-desc' | 'favorites';
+

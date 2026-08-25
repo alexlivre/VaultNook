@@ -24,4 +24,10 @@ export const IPC_CHANNELS = {
   RECOVER: 'vault:recover',
   SAVE_RECOVERY_PHRASE: 'recovery:save-phrase',
   REGENERATE_RECOVERY_PHRASE: 'vault:regenerate-recovery-phrase',
+  RENAME_VAULT: 'vault:rename-vault',
+  REMOVE_ITEMS: 'vault:remove-items',
+  MOVE_CATEGORY_ITEMS: 'vault:move-category-items',
+  OPEN_EXTERNAL: 'shell:open-external',
+  CLEAR_CLIPBOARD: 'clipboard:clear',
 } as const;
+
