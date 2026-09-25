@@ -11,37 +11,12 @@ import {
   ExternalLink,
   SlidersHorizontal,
   Maximize2,
-  KeyRound,
-  MessageSquareText,
-  Terminal,
-  Link,
-  KeySquare,
-  type LucideIcon,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { cn, maskValue, getPasswordStrength } from '../lib/utils';
-import type { Item, Category } from '../types';
-import { CategoryLabel } from '../types';
-
-const categoryMeta: Record<Category, { label: string; icon: LucideIcon; varName: string }> = {
-  api: { label: CategoryLabel.api, icon: KeyRound, varName: 'var(--color-category-api)' },
-  prompt: { label: CategoryLabel.prompt, icon: MessageSquareText, varName: 'var(--color-category-prompt)' },
-  command: { label: CategoryLabel.command, icon: Terminal, varName: 'var(--color-category-command)' },
-  link: { label: CategoryLabel.link, icon: Link, varName: 'var(--color-category-link)' },
-  keypair: { label: CategoryLabel.keypair, icon: KeySquare, varName: 'var(--color-category-keypair)' },
-};
-
-function relativeTime(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return 'agora mesmo';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `há ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `há ${hours} h`;
-  const days = Math.floor(hours / 24);
-  return `há ${days} dia${days > 1 ? 's' : ''}`;
-}
+import { cn, maskValue, getPasswordStrength, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
+import type { Item } from '../types';
+import { categoryMeta } from './category-icon';
 
 interface ItemDetailPanelProps {
   item: Item | null;
@@ -90,7 +65,7 @@ export function ItemDetailPanel({
   }
 
   const meta = categoryMeta[item.category];
-  const hasCommandParams = item.category === 'command' && /\{\{([^}]+)\}\}/.test(item.value);
+  const showParams = item.category === 'command' && hasCommandParams(item.value);
   const isSecret = item.category === 'api' || item.category === 'keypair';
   const displayedValue = isSecret && !isRevealed ? maskValue(item.value) : item.value;
   const strength = item.category === 'api' ? getPasswordStrength(item.value) : null;
@@ -98,21 +73,7 @@ export function ItemDetailPanel({
   const isStale = Date.now() - updatedTs > 4320 * 60 * 60 * 1000;
 
   const handleCopyJson = () => {
-    onCopy(
-      JSON.stringify(
-        {
-          name: item.name,
-          value: item.value,
-          publicKey: item.publicKey,
-          category: item.category,
-          description: item.description,
-          tags: item.tags,
-        },
-        null,
-        2
-      ),
-      item.id
-    );
+    onCopy(itemToJson(item), item.id);
   };
 
   return (
@@ -125,9 +86,9 @@ export function ItemDetailPanel({
         <span
           className="mb-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider"
           style={{
-            color: meta.varName,
-            backgroundColor: `color-mix(in srgb, ${meta.varName} 12%, transparent)`,
-            borderColor: `color-mix(in srgb, ${meta.varName} 35%, transparent)`,
+            color: meta.cssVar,
+            backgroundColor: `color-mix(in srgb, ${meta.cssVar} 12%, transparent)`,
+            borderColor: `color-mix(in srgb, ${meta.cssVar} 35%, transparent)`,
           }}
         >
           <meta.icon className="h-3 w-3" />
@@ -137,7 +98,7 @@ export function ItemDetailPanel({
           {item.name}
         </h3>
         <p className="mt-1 text-[11px] text-text-muted">
-          atualizado {relativeTime(updatedTs)}
+          atualizado {formatRelativeTime(updatedTs)}
           {(item.tags?.length ?? 0) > 0 && ` · ${item.tags.map((t) => `#${t}`).join(' ')}`}
         </p>
       </div>
@@ -202,7 +163,7 @@ export function ItemDetailPanel({
             Abrir no navegador
           </Button>
         )}
-        {hasCommandParams && (
+        {showParams && (
           <Button
             variant="outline"
             size="sm"
@@ -269,7 +230,7 @@ export function ItemDetailPanel({
           <div className="flex justify-between border-b border-dashed border-border-default py-1.5">
             <span className="text-text-muted">Última rotação</span>
             <span className={isStale ? 'text-warning' : 'text-text-secondary'}>
-              {relativeTime(updatedTs)}
+              {formatRelativeTime(updatedTs)}
             </span>
           </div>
           {strength && (

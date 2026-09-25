@@ -27,3 +27,12 @@ export async function restrictPathAcl(...paths: string[]): Promise<void> {
     }
   }
 }
+
+const restrictedPaths = new Set<string>();
+
+export async function restrictPathAclOnce(...paths: string[]): Promise<void> {
+  const pending = paths.filter((p) => !restrictedPaths.has(p));
+  if (pending.length === 0) return;
+  await restrictPathAcl(...pending);
+  pending.forEach((p) => restrictedPaths.add(p));
+}

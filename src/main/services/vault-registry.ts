@@ -2,7 +2,7 @@ import { app } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
 import { readFile, unlink } from 'fs/promises';
 import { join } from 'path';
-import { atomicWriteFile, restrictPathAcl } from './fs-utils';
+import { atomicWriteFile, restrictPathAclOnce } from './fs-utils';
 
 export interface VaultRegistryEntry {
   id: string;
@@ -27,7 +27,7 @@ function getRegistryPath(): string {
 }
 
 async function ensureRestricted(): Promise<void> {
-  await restrictPathAcl(join(app.getPath('userData'), 'vaults'), getRegistryPath());
+  await restrictPathAclOnce(join(app.getPath('userData'), 'vaults'), getRegistryPath());
 }
 
 export async function loadRegistry(): Promise<VaultRegistryEntry[]> {
@@ -39,18 +39,14 @@ export async function loadRegistry(): Promise<VaultRegistryEntry[]> {
     return [];
   }
   const raw = await readFile(path, 'utf-8');
-  registry = JSON.parse(raw);
-  return registry.vaults;
+  const parsed = JSON.parse(raw) as VaultRegistryData;
+  registry = parsed;
+  return parsed.vaults;
 }
 
 async function saveRegistry(): Promise<void> {
   if (!registry) return;
   await atomicWriteFile(getRegistryPath(), JSON.stringify(registry, null, 2));
-}
-
-export async function listVaults(): Promise<VaultRegistryEntry[]> {
-  if (!registry) await loadRegistry();
-  return (registry?.vaults || []).filter((v) => !v.hidden);
 }
 
 export async function listAllVaults(): Promise<VaultRegistryEntry[]> {
@@ -150,8 +146,4 @@ export async function migrateOldVault(): Promise<string | null> {
   await saveRegistry();
 
   return id;
-}
-
-export function getVaultsDir(): string {
-  return join(app.getPath('userData'), 'vaults');
 }

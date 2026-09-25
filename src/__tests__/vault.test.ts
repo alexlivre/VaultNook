@@ -315,5 +315,27 @@ describe('vault v3', () => {
       expect(items.find((i) => i.id === 'kp-1')?.category).toBe('keypair');
     });
   });
+
+  describe('vault isolation', () => {
+    it('should not overwrite a previously unlocked vault when creating a new one', async () => {
+      const vaultA = await vault.createVault('Password1!', 'A');
+      await vault.addItem(makeItem({ id: 'a-1', value: 'secret-a' }));
+      vault.lockVault();
+
+      const vaultB = await vault.createVault('Password1!', 'B');
+      expect(vaultB.vaultId).not.toBe(vaultA.vaultId);
+
+      const files = readdirSync(vaultsDir()).filter((f) => f.endsWith('.json'));
+      expect(files).toHaveLength(2);
+
+      vault.lockVault();
+      expect(await vault.loadVault(vaultA.vaultId)).toBe(true);
+      const unlockA = await vault.unlockVault('Password1!');
+      expect(unlockA.ok).toBe(true);
+      const itemsA = await vault.getAllItems();
+      expect(itemsA).toHaveLength(1);
+      expect(itemsA[0].value).toBe('secret-a');
+    });
+  });
 });
 

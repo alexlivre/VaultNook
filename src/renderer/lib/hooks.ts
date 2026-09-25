@@ -1,76 +1,24 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useVaultStore } from '../stores/vault-store';
-import type { ToastProps } from '../components/ui/toast';
 
-// Simple toast management hook
-export function useToast() {
-  const [toasts, setToasts] = useState<
-    (ToastProps & { id: string; title?: string; description?: string })[]
-  >([]);
+type ShortcutHandlers = Record<string, () => void>;
 
-  const toast = useCallback(
-    (props: { title?: string; description?: string; variant?: ToastProps['variant']; duration?: number; onUndo?: () => void }) => {
-      const id = crypto.randomUUID();
-      const duration = props.variant === 'destructive' ? 5000 : props.duration || 3000;
+// Keyboard shortcuts hook — registers a single global listener and keeps the
+// latest handlers in a ref so the listener never has to be re-registered.
+export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
 
-      setToasts((prev) => [
-        ...prev,
-        { id, ...props, duration },
-      ]);
-
-      if (duration > 0) {
-        setTimeout(() => {
-          setToasts((prev) => prev.filter((t) => t.id !== id));
-        }, duration);
-      }
-
-      return id;
-    },
-    []
-  );
-
-  const dismiss = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
-
-  return { toasts, toast, dismiss };
-}
-
-// Auto-lock inactivity hook
-export function useAutoLock() {
-  const { isLocked, autoLockTimer, resetActivity, setScreen, setIsLocked } = useVaultStore();
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleActivity = useCallback(() => {
-    if (isLocked) return;
-    resetActivity();
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (autoLockTimer > 0) {
-      timerRef.current = setTimeout(() => {
-        setScreen('unlock');
-        setIsLocked(true);
-      }, autoLockTimer * 1000);
-    }
-  }, [isLocked, autoLockTimer, resetActivity, setScreen, setIsLocked]);
-
-  return { handleActivity };
-}
-
-// Keyboard shortcuts hook
-export function useKeyboardShortcuts(handlers: Record<string, () => void>) {
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
         if (e.key === 'Escape') {
-          (e.target as HTMLElement).blur();
+          target.blur();
           return;
         }
-        // Only handle shortcuts when not in input, except Escape and Ctrl+F
-        if (e.key !== 'Escape' && !(e.key === 'f' && (e.ctrlKey || e.metaKey))) {
+        // Only Escape and Ctrl+F are handled while typing in a field
+        if (!(e.key === 'f' && (e.ctrlKey || e.metaKey))) {
           return;
         }
       }
@@ -80,42 +28,77 @@ export function useKeyboardShortcuts(handlers: Record<string, () => void>) {
 
       if (key === 'escape') {
         e.preventDefault();
-        handlers['escape']?.();
+        handlersRef.current['escape']?.();
         return;
       }
 
-      if (ctrl && key === 'n') {
+      if (!ctrl) return;
+
+      if (key === 'n') {
         e.preventDefault();
-        handlers['new-item']?.();
-        return;
-      }
-      if (ctrl && key === 'f') {
+        handlersRef.current['new-item']?.();
+      } else if (key === 'f') {
         e.preventDefault();
-        handlers['search']?.();
-        return;
-      }
-      if (ctrl && key === 'e') {
+        handlersRef.current['search']?.();
+      } else if (key === 'e') {
         e.preventDefault();
-        handlers['export']?.();
-        return;
-      }
-      if (ctrl && key === 'l') {
+        handlersRef.current['export']?.();
+      } else if (key === 'l') {
         e.preventDefault();
-        handlers['lock']?.();
-        return;
-      }
-      if (ctrl && key === 'a') {
-        handlers['select-all']?.();
-        return;
-      }
-      if (ctrl && key === 'k') {
+        handlersRef.current['lock']?.();
+      } else if (key === 'a') {
+        handlersRef.current['select-all']?.();
+      } else if (key === 'k') {
         e.preventDefault();
-        handlers['command-palette']?.();
-        return;
+        handlersRef.current['command-palette']?.();
       }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+}
+
+// Auto-lock inactivity hook. Locks the vault in the main process and routes
+// back to the unlock screen for the currently active vault.
+export function useAutoLock() {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleActivity = useCallback(() => {
+    const state = useVaultStore.getState();
+    if (state.isLocked) return;
+
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (state.autoLockTimer > 0) {
+      timerRef.current = setTimeout(async () => {
+        const current = useVaultStore.getState();
+        try {
+          await window.vaultNookApi.lock();
+        } catch {
+          // silent
+        }
+        if (current.activeVaultId) {
+          const target =
+            current.unlockTarget?.id === current.activeVaultId
+              ? current.unlockTarget
+              : { id: current.activeVaultId, name: current.activeVaultName, hint: '' };
+          current.setUnlockTarget(target);
+          current.setScreen('unlock');
+        } else {
+          current.setScreen('vault-manager');
+        }
+        current.setIsLocked(true);
+      }, state.autoLockTimer * 1000);
+    }
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
     },
-    [handlers]
+    []
   );
 
-  return { handleKeyDown };
+  return { handleActivity };
 }

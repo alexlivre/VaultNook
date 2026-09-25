@@ -193,17 +193,6 @@ export function VaultScreen() {
   const [listHeight, setListHeight] = React.useState(600);
   const listContainerRef = React.useRef<HTMLDivElement>(null);
 
-  React.useEffect(() => {
-    const updateHeight = () => {
-      if (listContainerRef.current) {
-        setListHeight(listContainerRef.current.clientHeight);
-      }
-    };
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
-
   // Listen for system lock/suspend events
   React.useEffect(() => {
     const api = window.vaultNookApi;
@@ -221,12 +210,34 @@ export function VaultScreen() {
     [items, activeCategory, searchQuery, favoritesFirst, sortOption]
   );
 
+  React.useEffect(() => {
+    const el = listContainerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setListHeight(el.clientHeight));
+    observer.observe(el);
+    setListHeight(el.clientHeight);
+    return () => observer.disconnect();
+  }, [displayItems.length]);
+
   const detailItem = React.useMemo(
     () => displayItems.find((i) => i.id === detailSelectedId) ?? displayItems[0] ?? null,
     [displayItems, detailSelectedId]
   );
 
   const favoritesCount = React.useMemo(() => items.filter((i) => i.favorite).length, [items]);
+
+  const categoryCounts = React.useMemo(() => {
+    const counts: Record<Category | 'all', number> = {
+      all: items.length,
+      api: 0,
+      prompt: 0,
+      command: 0,
+      link: 0,
+      keypair: 0,
+    };
+    for (const item of items) counts[item.category] += 1;
+    return counts;
+  }, [items]);
 
   const topTags = React.useMemo(() => {
     const counts = new Map<string, number>();
@@ -262,8 +273,10 @@ export function VaultScreen() {
         }
         clipboardTimeoutRef.current = setTimeout(async () => {
           try {
-            await window.vaultNookApi.clearClipboard();
-            toast({ title: 'Área de transferência limpa por segurança', variant: 'default' });
+            const cleared = await window.vaultNookApi.clearClipboard(value);
+            if (cleared) {
+              toast({ title: 'Área de transferência limpa por segurança', variant: 'default' });
+            }
           } catch {
             // silent
           }
@@ -584,10 +597,7 @@ export function VaultScreen() {
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeCategory === tab.id && !searchQuery.startsWith('tag:');
-              const count =
-                tab.id === 'all'
-                  ? items.length
-                  : items.filter((i) => i.category === tab.id).length;
+              const count = categoryCounts[tab.id];
 
               return (
                 <button

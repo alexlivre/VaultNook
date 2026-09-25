@@ -33,6 +33,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useToast } from '../components/toast-provider';
 import { useVaultStore } from '../stores/vault-store';
+import { formatAbsoluteDate } from '../lib/utils';
 import type { VaultEntry } from '../types';
 import { WindowControls } from '../components/window-controls';
 import { RenameVaultDialog } from '../components/rename-vault-dialog';
@@ -68,7 +69,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
     loadVaults();
   }, [loadVaults]);
 
-  const handleExport = async (vaultId: string) => {
+  const handleExport = React.useCallback(async (vaultId: string) => {
     try {
       const api = window.vaultNookApi;
       await api.exportVaultFile(vaultId);
@@ -76,9 +77,9 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
     } catch (err: unknown) {
       toast({ title: err instanceof Error ? err.message : 'Erro ao exportar', variant: 'destructive' });
     }
-  };
+  }, [toast]);
 
-  const handleToggleHidden = async (vaultId: string) => {
+  const handleToggleHidden = React.useCallback(async (vaultId: string) => {
     try {
       const api = window.vaultNookApi;
       const nowHidden = await api.toggleHidden(vaultId);
@@ -90,7 +91,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
     } catch (err: unknown) {
       toast({ title: err instanceof Error ? err.message : 'Erro', variant: 'destructive' });
     }
-  };
+  }, [loadVaults, toast]);
 
   const handleDeleteConfirm = async () => {
     if (!deleteVaultId || !deletePassword) return;
@@ -121,11 +122,6 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
     } catch (err: unknown) {
       toast({ title: err instanceof Error ? err.message : 'Erro ao importar', variant: 'destructive' });
     }
-  };
-
-  const formatDate = (ts: number) => {
-    const d = new Date(ts);
-    return d.toLocaleDateString('pt-BR');
   };
 
   const vaultCount = vaults.filter((v) => !v.hidden).length;
@@ -176,12 +172,11 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
               <VaultCard
                 key={vault.id}
                 vault={vault}
-                onSelect={() => onSelectVault(vault.id)}
-                onRename={() => setRenameTargetVault(vault)}
-                onExport={() => handleExport(vault.id)}
-                onToggleHidden={() => handleToggleHidden(vault.id)}
-                onDelete={() => setDeleteVaultId(vault.id)}
-                formatDate={formatDate}
+                onSelectVault={onSelectVault}
+                onRenameVault={setRenameTargetVault}
+                onExportVault={handleExport}
+                onToggleHiddenVault={handleToggleHidden}
+                onDeleteVault={setDeleteVaultId}
               />
             ))}
           </div>
@@ -273,15 +268,21 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
 interface VaultCardProps {
   vault: VaultEntry;
-  onSelect: () => void;
-  onRename: () => void;
-  onExport: () => void;
-  onToggleHidden: () => void;
-  onDelete: () => void;
-  formatDate: (ts: number) => string;
+  onSelectVault: (vaultId: string) => void;
+  onRenameVault: (vault: VaultEntry) => void;
+  onExportVault: (vaultId: string) => void;
+  onToggleHiddenVault: (vaultId: string) => void;
+  onDeleteVault: (vaultId: string) => void;
 }
 
-function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDelete, formatDate }: VaultCardProps) {
+const VaultCard = React.memo(function VaultCard({
+  vault,
+  onSelectVault,
+  onRenameVault,
+  onExportVault,
+  onToggleHiddenVault,
+  onDeleteVault,
+}: VaultCardProps) {
   const accentColor = vault.color || 'var(--color-brass)';
 
   return (
@@ -291,7 +292,7 @@ function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDele
         borderLeftWidth: '3px',
         borderLeftColor: accentColor,
       }}
-      onClick={onSelect}
+      onClick={() => onSelectVault(vault.id)}
     >
       {/* Icon */}
       <div
@@ -325,7 +326,7 @@ function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDele
           </span>
           <span className="text-xs text-text-muted/50">·</span>
           <span className="text-xs text-text-muted">
-            {formatDate(vault.lastOpened)}
+            {formatAbsoluteDate(vault.lastOpened)}
           </span>
         </div>
       </div>
@@ -339,15 +340,15 @@ function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDele
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onRename}>
+            <DropdownMenuItem onClick={() => onRenameVault(vault)}>
               <Pencil className="h-3.5 w-3.5 mr-2" />
               Personalizar / Renomear
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onExport}>
+            <DropdownMenuItem onClick={() => onExportVault(vault.id)}>
               <Download className="h-3.5 w-3.5 mr-2" />
               Exportar
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onToggleHidden}>
+            <DropdownMenuItem onClick={() => onToggleHiddenVault(vault.id)}>
               {vault.hidden ? (
                 <><Eye className="h-3.5 w-3.5 mr-2" />Revelar</>
               ) : (
@@ -355,7 +356,7 @@ function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDele
               )}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => onDeleteVault(vault.id)} className="text-destructive focus:text-destructive">
               <Trash2 className="h-3.5 w-3.5 mr-2" />
               Excluir
             </DropdownMenuItem>
@@ -364,4 +365,4 @@ function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDele
       </div>
     </div>
   );
-}
+});

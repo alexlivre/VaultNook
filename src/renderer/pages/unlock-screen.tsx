@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { WindowControls } from '../components/window-controls';
 import { RecoveryPhraseActions } from '../components/recovery-phrase-actions';
-import type { AutoLockOption } from '../stores/vault-store';
+import { useVaultStore, type AutoLockOption } from '../stores/vault-store';
 
 interface UnlockScreenProps {
   vaultId: string;
@@ -37,7 +37,6 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
       const api = window.vaultNookApi;
       const result = await api.unlock(password, vaultId);
       const settings = await api.getSettings();
-      const { useVaultStore } = await import('../stores/vault-store');
       useVaultStore.getState().setItems(result.items);
       useVaultStore.getState().setAutoLockTimer((settings.autoLockTimer ?? 60) as AutoLockOption);
       useVaultStore.getState().setActiveVaultId(result.vaultId);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  encrypt, decrypt, hashPassword, generateSalt, deriveKey,
+  encrypt, decrypt, hashPassword, generateSalt, deriveKey, deriveKeyBytes,
   generateMasterKey, encryptKey, decryptKey, generateRecoveryPhrase,
   validateRecoveryPhrase,
 } from '../main/services/crypto';
@@ -45,6 +45,15 @@ describe('crypto', () => {
       const h1 = await hashPassword('Password1!', salt);
       const h2 = await hashPassword('Password2!', salt);
       expect(h1.toString('base64')).not.toBe(h2.toString('base64'));
+    });
+
+    it('should match deriveKeyBytes and the wrapping key (single derivation)', async () => {
+      const salt = generateSalt();
+      const bytes = await deriveKeyBytes('Password1!', salt);
+      const hash = await hashPassword('Password1!', salt);
+      const key = await deriveKey('Password1!', salt);
+      expect(hash.equals(bytes)).toBe(true);
+      expect(key.key.equals(bytes)).toBe(true);
     });
   });
 

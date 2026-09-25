@@ -29,5 +29,9 @@ export const IPC_CHANNELS = {
   MOVE_CATEGORY_ITEMS: 'vault:move-category-items',
   OPEN_EXTERNAL: 'shell:open-external',
   CLEAR_CLIPBOARD: 'clipboard:clear',
+  WINDOW_MINIMIZE: 'window:minimize',
+  WINDOW_MAXIMIZE: 'window:maximize',
+  WINDOW_CLOSE: 'window:close',
+  WINDOW_MAXIMIZE_CHANGED: 'window:maximize-changed',
+  VAULT_LOCKED_BY_SYSTEM: 'vault-locked-by-system',
 } as const;
-

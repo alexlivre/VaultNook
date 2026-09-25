@@ -13,11 +13,9 @@ export function App() {
     setScreen,
     setVaults,
     setIsLocked,
+    unlockTarget,
+    setUnlockTarget,
   } = useVaultStore();
-
-  const [unlockVaultId, setUnlockVaultId] = React.useState<string | null>(null);
-  const [unlockVaultName, setUnlockVaultName] = React.useState('');
-  const [unlockVaultHint, setUnlockVaultHint] = React.useState('');
 
   React.useEffect(() => {
     async function init() {
@@ -33,21 +31,19 @@ export function App() {
     init();
   }, [setVaults, setScreen]);
 
-  const handleSelectVault = React.useCallback(async (vaultId: string) => {
-    try {
-      const api = window.vaultNookApi;
-      const hint = await api.getVaultHint(vaultId);
-      // Find vault name from store
-      const store = useVaultStore.getState();
-      const vault = store.vaults.find((v) => v.id === vaultId);
-      setUnlockVaultId(vaultId);
-      setUnlockVaultName(vault?.name || 'Vault');
-      setUnlockVaultHint(hint);
-      setScreen('unlock');
-    } catch {
-      setScreen('vault-manager');
-    }
-  }, [setScreen]);
+  const handleSelectVault = React.useCallback(
+    async (vaultId: string) => {
+      try {
+        const hint = await window.vaultNookApi.getVaultHint(vaultId);
+        const vault = useVaultStore.getState().vaults.find((v) => v.id === vaultId);
+        setUnlockTarget({ id: vaultId, name: vault?.name || 'Vault', hint });
+        setScreen('unlock');
+      } catch {
+        setScreen('vault-manager');
+      }
+    },
+    [setScreen, setUnlockTarget]
+  );
 
   const handleCreateVault = React.useCallback(() => {
     setScreen('create-password');
@@ -73,11 +69,9 @@ export function App() {
   }, [setScreen, setIsLocked]);
 
   const handleBackToManager = React.useCallback(() => {
-    setUnlockVaultId(null);
-    setUnlockVaultName('');
-    setUnlockVaultHint('');
+    setUnlockTarget(null);
     setScreen('vault-manager');
-  }, [setScreen]);
+  }, [setScreen, setUnlockTarget]);
 
   return (
     <ToastContextProvider>
@@ -88,20 +82,20 @@ export function App() {
         />
       )}
       {screen === 'create-password' && <CreatePasswordScreen onCreated={handleCreated} />}
-      {screen === 'unlock' && unlockVaultId && (
+      {screen === 'unlock' && unlockTarget && (
         <UnlockScreen
-          vaultId={unlockVaultId}
-          vaultName={unlockVaultName}
-          vaultHint={unlockVaultHint}
+          vaultId={unlockTarget.id}
+          vaultName={unlockTarget.name}
+          vaultHint={unlockTarget.hint}
           onUnlocked={handleUnlocked}
           onBack={handleBackToManager}
           onForgot={handleForgotPassword}
         />
       )}
-      {screen === 'recovery' && unlockVaultId && (
+      {screen === 'recovery' && unlockTarget && (
         <RecoveryScreen
-          vaultId={unlockVaultId}
-          vaultName={unlockVaultName}
+          vaultId={unlockTarget.id}
+          vaultName={unlockTarget.name}
           onRecovered={handleRecovered}
           onBack={handleBackToManager}
         />

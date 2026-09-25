@@ -9,7 +9,7 @@ import {
 } from './ui/dialog';
 import { Button } from './ui/button';
 import { useVaultStore } from '../stores/vault-store';
-import { calculateSecretAudit, formatDate, maskValue } from '../lib/utils';
+import { calculateSecretAudit, formatRelativeTime, maskValue } from '../lib/utils';
 import type { Item } from '../types';
 
 interface VaultAuditDialogProps {
@@ -182,7 +182,7 @@ export function VaultAuditDialog({ open, onOpenChange, onEditItem }: VaultAuditD
                           {item.name}
                         </span>
                         <span className="text-[11px] text-text-muted font-mono truncate block">
-                          {maskValue(item.value)} · Atualizado {formatDate(item.updatedAt || item.createdAt)}
+                          {maskValue(item.value)} · Atualizado {formatRelativeTime(item.updatedAt || item.createdAt)}
                         </span>
                       </div>
                     </div>

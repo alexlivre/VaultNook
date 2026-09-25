@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { KeyRound, KeySquare, MessageSquareText, Terminal, Link, Dice5, X, Tag } from 'lucide-react';
+import { KeyRound, KeySquare, Dice5, X, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import { useVaultStore } from '../stores/vault-store';
 import { PasswordGeneratorDialog } from './password-generator-dialog';
 import type { Item, Category } from '../types';
 import { CategoryLabel, Category as CategoryEnum } from '../types';
+import { CategoryIcon } from './category-icon';
 
 interface AddEditItemDialogProps {
   open: boolean;
@@ -143,11 +144,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                 <SelectTrigger>
                   <SelectValue>
                     <div className="flex items-center gap-2">
-                      {category === 'api' && <KeyRound className="h-3.5 w-3.5 text-category-api" />}
-                      {category === 'prompt' && <MessageSquareText className="h-3.5 w-3.5 text-category-prompt" />}
-                      {category === 'command' && <Terminal className="h-3.5 w-3.5 text-category-command" />}
-                      {category === 'link' && <Link className="h-3.5 w-3.5 text-category-link" />}
-                      {category === 'keypair' && <KeySquare className="h-3.5 w-3.5 text-category-keypair" />}
+                      <CategoryIcon category={category} className="h-3.5 w-3.5" />
                       {CategoryLabel[category]}
                     </div>
                   </SelectValue>
@@ -156,11 +153,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                   {CategoryEnum.options.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       <span className="flex items-center gap-2">
-                        {cat === 'api' && <KeyRound className="h-3.5 w-3.5 text-category-api" />}
-                        {cat === 'prompt' && <MessageSquareText className="h-3.5 w-3.5 text-category-prompt" />}
-                        {cat === 'command' && <Terminal className="h-3.5 w-3.5 text-category-command" />}
-                        {cat === 'link' && <Link className="h-3.5 w-3.5 text-category-link" />}
-                        {cat === 'keypair' && <KeySquare className="h-3.5 w-3.5 text-category-keypair" />}
+                        <CategoryIcon category={cat} className="h-3.5 w-3.5" />
                         {CategoryLabel[cat]}
                       </span>
                     </SelectItem>

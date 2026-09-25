@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Progress } from '../components/ui/progress';
 import { getPasswordStrength } from '../lib/utils';
+import { useVaultStore } from '../stores/vault-store';
 import { WindowControls } from '../components/window-controls';
 import { RecoveryPhraseActions } from '../components/recovery-phrase-actions';
 import { VAULT_COLORS } from '../components/rename-vault-dialog';
@@ -56,6 +57,9 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
     try {
       const api = window.vaultNookApi;
       const result = await api.createVault(password, vaultName.trim(), hint.trim(), color);
+      const store = useVaultStore.getState();
+      store.setActiveVaultId(result.vaultId);
+      store.setActiveVaultName(vaultName.trim());
       setNewPhrase(result.recoveryPhrase);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao criar cofre');

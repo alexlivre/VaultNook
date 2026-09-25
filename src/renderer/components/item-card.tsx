@@ -1,10 +1,5 @@
 import * as React from 'react';
 import {
-  KeyRound,
-  KeySquare,
-  MessageSquareText,
-  Terminal,
-  Link,
   Star,
   Copy,
   Check,
@@ -30,9 +25,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { cn, maskValue, truncateValue, formatDate } from '../lib/utils';
+import { cn, maskValue, truncateValue, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
 import type { Item, Category } from '../types';
-import { CategoryColorName, CategoryLabel, Category as CategoryEnum } from '../types';
+import { CategoryLabel, Category as CategoryEnum } from '../types';
+import { CategoryIcon, categoryMeta } from './category-icon';
 
 interface ItemCardProps {
   item: Item;
@@ -58,14 +54,6 @@ interface ItemCardProps {
   disableAnimation?: boolean;
 }
 
-const categoryIcons: Record<string, React.ElementType> = {
-  api: KeyRound,
-  prompt: MessageSquareText,
-  command: Terminal,
-  link: Link,
-  keypair: KeySquare,
-};
-
 export function ItemCard({
   item,
   index,
@@ -89,9 +77,8 @@ export function ItemCard({
   onActivity,
   disableAnimation = false,
 }: ItemCardProps) {
-  const colorClass = CategoryColorName[item.category];
-  const Icon = categoryIcons[item.category];
-  const hasCommandParams = item.category === 'command' && /\{\{([^}]+)\}\}/.test(item.value);
+  const colorClass = categoryMeta[item.category].colorName;
+  const showParams = item.category === 'command' && hasCommandParams(item.value);
   const [contextOpen, setContextOpen] = React.useState(false);
   const [contextPos, setContextPos] = React.useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [copiedField, setCopiedField] = React.useState<'value' | 'publicKey' | null>(null);
@@ -105,19 +92,7 @@ export function ItemCard({
 
   const handleCopyJson = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const data = JSON.stringify(
-      {
-        name: item.name,
-        value: item.value,
-        publicKey: item.publicKey,
-        category: item.category,
-        description: item.description,
-        tags: item.tags,
-      },
-      null,
-      2
-    );
-    onCopy(data, item.id);
+    onCopy(itemToJson(item), item.id);
   };
 
   return (
@@ -154,7 +129,7 @@ export function ItemCard({
             backgroundColor: `color-mix(in srgb, var(--color-category-${colorClass}) 15%, transparent)`,
           }}
         >
-          {Icon && <Icon className={cn('h-4 w-4', `text-category-${colorClass}`)} />}
+          <CategoryIcon category={item.category} />
         </div>
 
         {/* Content Info */}
@@ -174,7 +149,7 @@ export function ItemCard({
                 : truncateValue(item.value, 45)}
             </span>
             <span className="text-[10px] text-text-muted shrink-0">
-              {formatDate(item.updatedAt || item.createdAt)}
+              {formatRelativeTime(item.updatedAt || item.createdAt)}
             </span>
           </div>
 
@@ -222,7 +197,7 @@ export function ItemCard({
           )}
 
           {/* Command category with template params */}
-          {hasCommandParams && onOpenParamDialog && (
+          {showParams && onOpenParamDialog && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -453,7 +428,7 @@ export function ItemCard({
             </DropdownMenuItem>
           )}
 
-          {hasCommandParams && onOpenParamDialog && (
+          {showParams && onOpenParamDialog && (
             <DropdownMenuItem onClick={() => onOpenParamDialog(item)}>
               <SlidersHorizontal className="h-3.5 w-3.5 mr-2 text-category-command" />
               Preencher parâmetros

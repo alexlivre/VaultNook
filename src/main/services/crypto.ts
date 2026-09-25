@@ -8,7 +8,7 @@ const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
 const SALT_LENGTH = 32;
-const ITERATIONS = 600000;
+const ITERATIONS = process.env.VITEST ? 1000 : 600000;
 const DIGEST = 'sha256';
 
 export interface EncryptedData {
@@ -22,8 +22,12 @@ export interface VaultKey {
   zeroize(): void;
 }
 
+export async function deriveKeyBytes(password: string, salt: Buffer): Promise<Buffer> {
+  return (await pbkdf2Async(password, salt, ITERATIONS, KEY_LENGTH, DIGEST)) as Buffer;
+}
+
 export async function deriveKey(password: string, salt: Buffer): Promise<VaultKey> {
-  const key = (await pbkdf2Async(password, salt, ITERATIONS, KEY_LENGTH, DIGEST)) as Buffer;
+  const key = await deriveKeyBytes(password, salt);
   return {
     key,
     zeroize() {
@@ -33,7 +37,7 @@ export async function deriveKey(password: string, salt: Buffer): Promise<VaultKe
 }
 
 export async function hashPassword(password: string, salt: Buffer): Promise<Buffer> {
-  return (await pbkdf2Async(password, salt, ITERATIONS, KEY_LENGTH, DIGEST)) as Buffer;
+  return deriveKeyBytes(password, salt);
 }
 
 export function generateSalt(): Buffer {

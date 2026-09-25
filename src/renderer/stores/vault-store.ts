@@ -8,12 +8,12 @@ interface VaultState {
   // Auth
   screen: AppScreen;
   isLocked: boolean;
-  isFirstRun: boolean;
 
   // Vaults
   vaults: VaultEntry[];
   activeVaultId: string | null;
   activeVaultName: string;
+  unlockTarget: { id: string; name: string; hint: string } | null;
 
   // Data
   items: Item[];
@@ -29,15 +29,14 @@ interface VaultState {
 
   // Session
   autoLockTimer: AutoLockOption;
-  lastActivity: number;
 
   // Actions
   setScreen: (screen: AppScreen) => void;
   setIsLocked: (locked: boolean) => void;
-  setIsFirstRun: (first: boolean) => void;
   setVaults: (vaults: VaultEntry[]) => void;
   setActiveVaultId: (id: string | null) => void;
   setActiveVaultName: (name: string) => void;
+  setUnlockTarget: (target: { id: string; name: string; hint: string } | null) => void;
   setItems: (items: Item[]) => void;
   addItem: (item: Item) => void;
   updateItem: (item: Item) => void;
@@ -54,7 +53,6 @@ interface VaultState {
   selectAllItems: () => void;
   clearSelection: () => void;
   setAutoLockTimer: (timer: AutoLockOption) => void;
-  resetActivity: () => void;
 
   // Computed
   filteredItems: () => Item[];
@@ -64,12 +62,12 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   // Auth
   screen: 'loading',
   isLocked: true,
-  isFirstRun: false,
 
   // Vaults
   vaults: [],
   activeVaultId: null,
   activeVaultName: '',
+  unlockTarget: null,
 
   // Data
   items: [],
@@ -85,15 +83,14 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   // Session
   autoLockTimer: 60,
-  lastActivity: Date.now(),
 
   // Actions
   setScreen: (screen) => set({ screen }),
   setIsLocked: (locked) => set({ isLocked: locked }),
-  setIsFirstRun: (first) => set({ isFirstRun: first }),
   setVaults: (vaults) => set({ vaults }),
   setActiveVaultId: (id) => set({ activeVaultId: id }),
   setActiveVaultName: (name) => set({ activeVaultName: name }),
+  setUnlockTarget: (target) => set({ unlockTarget: target }),
   setItems: (items) => set({ items }),
   addItem: (item) => set((state) => ({ items: [...state.items, item] })),
   updateItem: (item) =>
@@ -156,7 +153,6 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   },
   clearSelection: () => set({ selectedItemIds: new Set() }),
   setAutoLockTimer: (timer) => set({ autoLockTimer: timer }),
-  resetActivity: () => set({ lastActivity: Date.now() }),
 
   // Computed
   filteredItems: () => {

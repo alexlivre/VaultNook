@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(timestamp: number): string {
+export function formatRelativeTime(timestamp: number): string {
   const date = new Date(timestamp);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
@@ -21,6 +21,35 @@ export function formatDate(timestamp: number): string {
   return date.toLocaleDateString('pt-BR');
 }
 
+export function formatAbsoluteDate(timestamp: number): string {
+  return new Date(timestamp).toLocaleDateString('pt-BR');
+}
+
+export function hasCommandParams(value: string): boolean {
+  return /\{\{([^}]+)\}\}/.test(value);
+}
+
+export function extractCommandParams(value: string): string[] {
+  const matches = value.match(/\{\{([^}]+)\}\}/g);
+  if (!matches) return [];
+  return Array.from(new Set(matches.map((m) => m.slice(2, -2).trim())));
+}
+
+export function itemToJson(item: Item): string {
+  return JSON.stringify(
+    {
+      name: item.name,
+      value: item.value,
+      publicKey: item.publicKey,
+      category: item.category,
+      description: item.description,
+      tags: item.tags,
+    },
+    null,
+    2
+  );
+}
+
 export function maskValue(value: string): string {
   if (value.length <= 8) return '••••••••';
   return value.substring(0, 4) + '••••••••' + value.substring(value.length - 4);
@@ -29,35 +58,6 @@ export function maskValue(value: string): string {
 export function truncateValue(value: string, maxLength: number = 60): string {
   if (value.length <= maxLength) return value;
   return value.substring(0, maxLength) + '...';
-}
-
-export function generatePassword(length: number = 32): string {
-  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const lower = 'abcdefghijklmnopqrstuvwxyz';
-  const digits = '0123456789';
-  const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  const all = upper + lower + digits + symbols;
-
-  // Guarantee at least one of each type
-  const required = [
-    upper[Math.floor(Math.random() * upper.length)],
-    lower[Math.floor(Math.random() * lower.length)],
-    digits[Math.floor(Math.random() * digits.length)],
-    symbols[Math.floor(Math.random() * symbols.length)],
-  ];
-
-  const remaining = Array.from({ length: length - 4 }, () =>
-    all[Math.floor(Math.random() * all.length)]
-  );
-
-  const combined = [...required, ...remaining];
-  // Shuffle using Fisher-Yates
-  for (let i = combined.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [combined[i], combined[j]] = [combined[j], combined[i]];
-  }
-
-  return combined.join('');
 }
 
 export function getPasswordStrength(password: string): {

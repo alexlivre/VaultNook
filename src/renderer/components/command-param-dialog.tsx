@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useToast } from './toast-provider';
+import { extractCommandParams } from '../lib/utils';
 import type { Item } from '../types';
 
 interface CommandParamDialogProps {
@@ -27,10 +28,7 @@ export function CommandParamDialog({ open, onOpenChange, item }: CommandParamDia
   // Extract variables like {{HOST}} or {{port}}
   const paramNames = React.useMemo(() => {
     if (!item || !item.value) return [];
-    const matches = item.value.match(/\{\{([^}]+)\}\}/g);
-    if (!matches) return [];
-    const unique = new Set(matches.map((m) => m.slice(2, -2).trim()));
-    return Array.from(unique);
+    return extractCommandParams(item.value);
   }, [item]);
 
   React.useEffect(() => {
