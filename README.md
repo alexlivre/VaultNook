@@ -39,14 +39,14 @@
 | Funcionalidade | Descrição |
 |---------------|-----------|
 | **CRUD completo** | Criar, editar e excluir itens |
-| **5 categorias** | APIs, Prompts, Commands, Links + visão "Todos" |
-| **Cópia com um clique** | Duplo clique ou botão de cópia |
+| **6 categorias** | APIs, Prompts, Commands, Links, Chaves (par público/privado) + visão "Todos" |
+| **Cópia explícita** | Botão de copiar, menu de contexto ou `Enter` — clique no card não copia |
 | **Favoritos** | Marque itens importantes e filtre por estes |
 | **Busca global** | Pesquise em todas as categorias de uma vez |
 | **Busca por sintaxe** | `cat:api stripe` para filtrar por categoria |
 | **Gerador de senhas** | Crie senhas fortes diretamente no app |
 | **Multi-select** | Selecione vários itens para ações em lote |
-| **Valores mascarados** | APIs aparecem ocultas por padrão — revele quando precisar |
+| **Valores mascarados** | APIs e chaves privadas aparecem ocultas por padrão — revele quando precisar |
 | **Menu de contexto** | Clique direito para ações rápidas |
 | **Desfazer exclusão** | Restaure item excluído em até 5 segundos |
 

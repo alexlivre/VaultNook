@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { KeyRound, MessageSquareText, Terminal, Link, Dice5, X, Tag } from 'lucide-react';
+import { KeyRound, KeySquare, MessageSquareText, Terminal, Link, Dice5, X, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
 import { useVaultStore } from '../stores/vault-store';
 import { PasswordGeneratorDialog } from './password-generator-dialog';
 import type { Item, Category } from '../types';
-import { CategoryLabel } from '../types';
+import { CategoryLabel, Category as CategoryEnum } from '../types';
 
 interface AddEditItemDialogProps {
   open: boolean;
@@ -32,6 +32,7 @@ interface AddEditItemDialogProps {
 export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: AddEditItemDialogProps) {
   const [name, setName] = React.useState('');
   const [value, setValue] = React.useState('');
+  const [publicKey, setPublicKey] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [category, setCategory] = React.useState<Category>('api');
   const [tags, setTags] = React.useState<string[]>([]);
@@ -44,12 +45,14 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
     if (editItem) {
       setName(editItem.name);
       setValue(editItem.value);
+      setPublicKey(editItem.publicKey || '');
       setDescription(editItem.description);
       setCategory(editItem.category);
       setTags(editItem.tags || []);
     } else {
       setName('');
       setValue('');
+      setPublicKey('');
       setDescription('');
       setCategory('api');
       setTags([]);
@@ -91,6 +94,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           id: editItem.id,
           name: name.trim(),
           value: value.trim(),
+          publicKey: publicKey.trim(),
           description: description.trim(),
           category,
           tags,
@@ -99,6 +103,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
         await api.addItem({
           name: name.trim(),
           value: value.trim(),
+          publicKey: publicKey.trim(),
           description: description.trim(),
           category,
           tags,
@@ -142,18 +147,20 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                       {category === 'prompt' && <MessageSquareText className="h-3.5 w-3.5 text-category-prompt" />}
                       {category === 'command' && <Terminal className="h-3.5 w-3.5 text-category-command" />}
                       {category === 'link' && <Link className="h-3.5 w-3.5 text-category-link" />}
+                      {category === 'keypair' && <KeySquare className="h-3.5 w-3.5 text-category-keypair" />}
                       {CategoryLabel[category]}
                     </div>
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {(['api', 'prompt', 'command', 'link'] as Category[]).map((cat) => (
+                  {CategoryEnum.options.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       <span className="flex items-center gap-2">
                         {cat === 'api' && <KeyRound className="h-3.5 w-3.5 text-category-api" />}
                         {cat === 'prompt' && <MessageSquareText className="h-3.5 w-3.5 text-category-prompt" />}
                         {cat === 'command' && <Terminal className="h-3.5 w-3.5 text-category-command" />}
                         {cat === 'link' && <Link className="h-3.5 w-3.5 text-category-link" />}
+                        {cat === 'keypair' && <KeySquare className="h-3.5 w-3.5 text-category-keypair" />}
                         {CategoryLabel[cat]}
                       </span>
                     </SelectItem>
@@ -176,12 +183,20 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
 
             {/* Value */}
             <div className="space-y-2">
-              <Label htmlFor="item-value">Valor</Label>
+              <Label htmlFor="item-value">
+                {category === 'keypair' ? 'Chave privada' : 'Valor'}
+              </Label>
               <div className="flex gap-2">
                 <Input
                   id="item-value"
-                  type={category === 'api' ? 'password' : 'text'}
-                  placeholder={category === 'api' ? 'sk_live_...' : 'Seu valor aqui'}
+                  type={category === 'api' || category === 'keypair' ? 'password' : 'text'}
+                  placeholder={
+                    category === 'api'
+                      ? 'sk_live_...'
+                      : category === 'keypair'
+                        ? 'Chave privada'
+                        : 'Seu valor aqui'
+                  }
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   className="flex-1"
@@ -198,6 +213,20 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                 </Button>
               </div>
             </div>
+
+            {/* Public key (keypair only) */}
+            {category === 'keypair' && (
+              <div className="space-y-2">
+                <Label htmlFor="item-public-key">Chave pública (opcional)</Label>
+                <Input
+                  id="item-public-key"
+                  type="text"
+                  placeholder="Chave pública"
+                  value={publicKey}
+                  onChange={(e) => setPublicKey(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* Tags */}
             <div className="space-y-2">
@@ -264,9 +293,13 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
             </div>
 
             {/* Security hint */}
-            {category === 'api' && (
-              <p className="text-xs text-category-api/80 flex items-center gap-1.5">
-                <KeyRound className="h-3 w-3" />
+            {(category === 'api' || category === 'keypair') && (
+              <p className={`text-xs flex items-center gap-1.5 ${category === 'api' ? 'text-category-api/80' : 'text-category-keypair/80'}`}>
+                {category === 'api' ? (
+                  <KeyRound className="h-3 w-3" />
+                ) : (
+                  <KeySquare className="h-3 w-3" />
+                )}
                 Este valor e suas tags serão criptografados ao salvar
               </p>
             )}

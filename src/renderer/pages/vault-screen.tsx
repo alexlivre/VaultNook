@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {
   KeyRound,
+  KeySquare,
   MessageSquareText,
   Terminal,
   Link,
@@ -38,7 +39,7 @@ import {
 } from '../components/ui/alert-dialog';
 import { cn } from '../lib/utils';
 import type { Category, Item } from '../types';
-import { CategoryLabel } from '../types';
+import { CategoryLabel, Category as CategoryEnum } from '../types';
 import { AddEditItemDialog } from '../components/add-edit-item-dialog';
 import { VaultSettingsSheet } from '../components/vault-settings-sheet';
 import { WindowControls } from '../components/window-controls';
@@ -56,6 +57,7 @@ const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; colo
   { id: 'prompt', label: 'Prompts', icon: MessageSquareText, color: 'text-category-prompt' },
   { id: 'command', label: 'Commands', icon: Terminal, color: 'text-category-command' },
   { id: 'link', label: 'Links', icon: Link, color: 'text-category-link' },
+  { id: 'keypair', label: 'Chaves', icon: KeySquare, color: 'text-category-keypair' },
 ];
 
 interface VaultRowProps {
@@ -267,6 +269,7 @@ export function VaultScreen() {
         await api.addItem({
           name: `${item.name} (cópia)`,
           value: item.value,
+          publicKey: item.publicKey || '',
           description: item.description,
           category: item.category,
           tags: item.tags || [],
@@ -370,7 +373,7 @@ export function VaultScreen() {
         if (focusedIndex >= 0 && focusedIndex < displayItems.length) {
           e.preventDefault();
           const item = displayItems[focusedIndex];
-          if (item.category === 'api') {
+          if (item.category === 'api' || item.category === 'keypair') {
             toggleReveal(item.id);
           }
         }
@@ -595,7 +598,7 @@ export function VaultScreen() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {(['api', 'prompt', 'command', 'link'] as Category[]).map((cat) => (
+                {CategoryEnum.options.map((cat) => (
                   <DropdownMenuItem key={cat} onClick={() => handleBulkMove(cat)}>
                     {CategoryLabel[cat]}
                   </DropdownMenuItem>

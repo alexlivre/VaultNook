@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const Category = z.enum(['api', 'prompt', 'command', 'link']);
+export const Category = z.enum(['api', 'prompt', 'command', 'link', 'keypair']);
 export type Category = z.infer<typeof Category>;
 
 export const CategoryLabel: Record<Category, string> = {
@@ -8,6 +8,7 @@ export const CategoryLabel: Record<Category, string> = {
   prompt: 'Prompts',
   command: 'Commands',
   link: 'Links',
+  keypair: 'Chaves',
 };
 
 export const CategoryIcon: Record<Category, string> = {
@@ -15,6 +16,7 @@ export const CategoryIcon: Record<Category, string> = {
   prompt: 'MessageSquareText',
   command: 'Terminal',
   link: 'Link',
+  keypair: 'KeySquare',
 };
 
 export const CategoryColor: Record<Category, string> = {
@@ -22,6 +24,7 @@ export const CategoryColor: Record<Category, string> = {
   prompt: 'var(--color-category-prompt)',
   command: 'var(--color-category-command)',
   link: 'var(--color-category-link)',
+  keypair: 'var(--color-category-keypair)',
 };
 
 export const CategoryColorName: Record<Category, string> = {
@@ -29,12 +32,14 @@ export const CategoryColorName: Record<Category, string> = {
   prompt: 'category-prompt',
   command: 'category-command',
   link: 'category-link',
+  keypair: 'category-keypair',
 };
 
 export const ItemSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Nome é obrigatório'),
   value: z.string().min(1, 'Valor é obrigatório'),
+  publicKey: z.string().default(''),
   description: z.string().default(''),
   category: Category,
   tags: z.array(z.string()).default([]),
@@ -47,6 +52,7 @@ export type Item = z.infer<typeof ItemSchema>;
 export const CreateItemSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(200),
   value: z.string().min(1, 'Valor é obrigatório'),
+  publicKey: z.string().optional().default(''),
   description: z.string().max(500).default(''),
   category: Category,
   tags: z.array(z.string()).default([]),

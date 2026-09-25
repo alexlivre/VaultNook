@@ -23,6 +23,7 @@ interface StoredItem {
   id: string;
   name: EncryptedData;
   value: EncryptedData;
+  publicKey?: EncryptedData | null;
   description: EncryptedData | null;
   tags?: EncryptedData | null;
   category: Category;
@@ -35,6 +36,7 @@ interface LegacyItem {
   id?: string;
   name?: string;
   value: string | EncryptedData;
+  publicKey?: string | EncryptedData;
   description?: string;
   tags?: string[];
   category: Category;
@@ -343,7 +345,7 @@ export async function getAutoLockTimer(): Promise<number> {
 }
 
 export async function getVaultInfo() {  if (!vaultData) return null;
-  const itemsByCategory: Record<string, number> = { api: 0, prompt: 0, command: 0, link: 0 };
+  const itemsByCategory: Record<string, number> = { api: 0, prompt: 0, command: 0, link: 0, keypair: 0 };
   for (const item of vaultData.items) {
     itemsByCategory[item.category] = (itemsByCategory[item.category] || 0) + 1;
   }
@@ -362,7 +364,7 @@ export async function getVaultMetadata(vaultId: string) {
     const raw = await readFile(path, 'utf-8');
     const data = JSON.parse(raw);
     const items = (data.items || []) as { category: string }[];
-    const itemsByCategory: Record<string, number> = { api: 0, prompt: 0, command: 0, link: 0 };
+    const itemsByCategory: Record<string, number> = { api: 0, prompt: 0, command: 0, link: 0, keypair: 0 };
     items.forEach((item) => {
       itemsByCategory[item.category] = (itemsByCategory[item.category] || 0) + 1;
     });
@@ -391,6 +393,7 @@ export async function getAllItems(): Promise<Item[]> {
       id: item.id,
       name: decrypt(item.name, vaultKey!),
       value: decrypt(item.value, vaultKey!),
+      publicKey: item.publicKey ? decrypt(item.publicKey, vaultKey!) : '',
       description: item.description ? decrypt(item.description, vaultKey!) : '',
       tags: Array.isArray(tags) ? tags : [],
       category: item.category,
@@ -409,6 +412,7 @@ function toStoredItem(item: Item): StoredItem {
     id: item.id,
     name: encrypt(item.name, vaultKey!),
     value: encrypt(item.value, vaultKey!),
+    publicKey: item.publicKey ? encrypt(item.publicKey, vaultKey!) : null,
     description: item.description ? encrypt(item.description, vaultKey!) : null,
     tags: tagsEnc,
     category: item.category,
@@ -510,6 +514,7 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
         id: item.id,
         name: item.name,
         value: item.value,
+        publicKey: item.publicKey ?? null,
         description: item.description ?? null,
         tags: item.tags ?? null,
         category: item.category,
@@ -522,10 +527,12 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
       const tagsEnc = Array.isArray(item.tags) && item.tags.length > 0
         ? encrypt(JSON.stringify(item.tags), vaultKey!)
         : null;
+      const rawPublicKey = typeof item.publicKey === 'string' ? item.publicKey : '';
       stored = {
         id: item.id || randomUUID(),
         name: encrypt(item.name || '', vaultKey!),
         value: encrypt(rawValue, vaultKey!),
+        publicKey: rawPublicKey ? encrypt(rawPublicKey, vaultKey!) : null,
         description: item.description ? encrypt(item.description, vaultKey!) : null,
         tags: tagsEnc,
         category: item.category as Category,

@@ -27,6 +27,7 @@ const makeItem = (overrides: Record<string, unknown> = {}) => ({
   id: 'test-id',
   name: 'Test API',
   value: 'sk_test_123',
+  publicKey: '',
   description: '',
   category: 'api' as const,
   tags: [] as string[],
@@ -259,6 +260,59 @@ describe('vault v3', () => {
       items = await vault.getAllItems();
       expect(items).toHaveLength(1);
       expect(items[0].id).toBe('item-2');
+    });
+  });
+
+  describe('keypair category', () => {
+    it('should round-trip publicKey encrypted at rest', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(
+        makeItem({ category: 'keypair', value: 'PRIVATE-KEY', publicKey: 'PUBLIC-KEY' })
+      );
+
+      const raw = JSON.parse(readFileSync(singleVaultFile(), 'utf-8'));
+      expect(typeof raw.items[0].publicKey).toBe('object');
+      expect(raw.items[0].publicKey.ciphertext).toBeDefined();
+
+      const items = await vault.getAllItems();
+      expect(items[0].category).toBe('keypair');
+      expect(items[0].value).toBe('PRIVATE-KEY');
+      expect(items[0].publicKey).toBe('PUBLIC-KEY');
+    });
+
+    it('should read items stored without publicKey as empty string', async () => {
+      const created = await vault.createVault('Password1!');
+      await vault.addItem(makeItem());
+
+      // Simulate a vault written by an older version (no publicKey field)
+      const file = singleVaultFile();
+      const raw = JSON.parse(readFileSync(file, 'utf-8'));
+      delete raw.items[0].publicKey;
+      writeFileSync(file, JSON.stringify(raw));
+
+      vault.lockVault();
+      expect(await vault.loadVault(created.vaultId)).toBe(true);
+      const unlock = await vault.unlockVault('Password1!');
+      expect(unlock.ok).toBe(true);
+
+      const items = await vault.getAllItems();
+      expect(items[0].publicKey).toBe('');
+    });
+
+    it('should preserve publicKey through export and import', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(
+        makeItem({ id: 'kp-1', category: 'keypair', value: 'PRIV', publicKey: 'PUB' })
+      );
+
+      const exported = await vault.exportVault();
+      await vault.removeItem('kp-1');
+      const result = await vault.importVault(exported);
+      expect(result.imported).toBe(1);
+
+      const items = await vault.getAllItems();
+      expect(items.find((i) => i.id === 'kp-1')?.publicKey).toBe('PUB');
+      expect(items.find((i) => i.id === 'kp-1')?.category).toBe('keypair');
     });
   });
 });

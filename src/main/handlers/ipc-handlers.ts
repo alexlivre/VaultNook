@@ -6,7 +6,7 @@ import { z } from 'zod';
 import * as vault from '../services/vault';
 import * as registry from '../services/vault-registry';
 import { IPC_CHANNELS } from '../../ipc-channels';
-import { CreateItemSchema, EditItemSchema, ChangePasswordSchema } from '../../renderer/types';
+import { CreateItemSchema, EditItemSchema, ChangePasswordSchema, Category } from '../../renderer/types';
 
 const DeleteVaultSchema = z.object({
   password: z.string().min(1),
@@ -340,7 +340,7 @@ export function registerIpcHandlers(): void {
     const { ids, category } = validate(
       z.object({
         ids: z.array(z.string()),
-        category: z.enum(['api', 'prompt', 'command', 'link']),
+        category: Category,
       }),
       data
     );

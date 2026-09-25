@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {
   KeyRound,
+  KeySquare,
   MessageSquareText,
   Terminal,
   Link,
@@ -31,7 +32,7 @@ import {
 } from './ui/dropdown-menu';
 import { cn, maskValue, truncateValue, formatDate } from '../lib/utils';
 import type { Item, Category } from '../types';
-import { CategoryColorName, CategoryLabel } from '../types';
+import { CategoryColorName, CategoryLabel, Category as CategoryEnum } from '../types';
 
 interface ItemCardProps {
   item: Item;
@@ -61,6 +62,7 @@ const categoryIcons: Record<string, React.ElementType> = {
   prompt: MessageSquareText,
   command: Terminal,
   link: Link,
+  keypair: KeySquare,
 };
 
 export function ItemCard({
@@ -90,6 +92,7 @@ export function ItemCard({
   const hasCommandParams = item.category === 'command' && /\{\{([^}]+)\}\}/.test(item.value);
   const [contextOpen, setContextOpen] = React.useState(false);
   const [contextPos, setContextPos] = React.useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [copiedField, setCopiedField] = React.useState<'value' | 'publicKey' | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -104,6 +107,7 @@ export function ItemCard({
       {
         name: item.name,
         value: item.value,
+        publicKey: item.publicKey,
         category: item.category,
         description: item.description,
         tags: item.tags,
@@ -134,8 +138,6 @@ export function ItemCard({
         onClick={(e) => {
           if (e.ctrlKey || e.metaKey) {
             onSelect(item.id);
-          } else {
-            onCopy(item.value, item.id);
           }
           onActivity();
         }}
@@ -163,7 +165,7 @@ export function ItemCard({
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs text-text-muted truncate">
-              {item.category === 'api' && !isRevealed
+              {(item.category === 'api' || item.category === 'keypair') && !isRevealed
                 ? maskValue(item.value)
                 : truncateValue(item.value, 45)}
             </span>
@@ -255,8 +257,8 @@ export function ItemCard({
             </Tooltip>
           )}
 
-          {/* API: Reveal / Mask */}
-          {item.category === 'api' && (
+          {/* API / keypair: Reveal / Mask */}
+          {(item.category === 'api' || item.category === 'keypair') && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -279,27 +281,57 @@ export function ItemCard({
             </Tooltip>
           )}
 
-          {/* Copy Button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCopy(item.value, item.id);
-                }}
-              >
-                {isCopied ? (
-                  <Check className="h-3.5 w-3.5 text-success" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Copiar</TooltipContent>
-          </Tooltip>
+          {/* Copy public key (keypair only) */}
+          {item.category === 'keypair' && item.publicKey && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCopiedField('publicKey');
+                    onCopy(item.publicKey, item.id);
+                  }}
+                >
+                  {isCopied && copiedField === 'publicKey' ? (
+                    <Check className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copiar chave pública</TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* Copy private value: keypair requires reveal first */}
+          {(item.category !== 'keypair' || isRevealed) && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCopiedField('value');
+                    onCopy(item.value, item.id);
+                  }}
+                >
+                  {isCopied && copiedField !== 'publicKey' ? (
+                    <Check className="h-3.5 w-3.5 text-success" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {item.category === 'keypair' ? 'Copiar chave privada' : 'Copiar'}
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Favorite Button */}
           <Tooltip>
@@ -379,10 +411,28 @@ export function ItemCard({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-52">
-          <DropdownMenuItem onClick={() => onCopy(item.value, item.id)}>
-            <Copy className="h-3.5 w-3.5 mr-2" />
-            Copiar valor
-          </DropdownMenuItem>
+          {(item.category !== 'keypair' || isRevealed) && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCopiedField('value');
+                onCopy(item.value, item.id);
+              }}
+            >
+              <Copy className="h-3.5 w-3.5 mr-2" />
+              {item.category === 'keypair' ? 'Copiar chave privada' : 'Copiar valor'}
+            </DropdownMenuItem>
+          )}
+          {item.category === 'keypair' && item.publicKey && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCopiedField('publicKey');
+                onCopy(item.publicKey, item.id);
+              }}
+            >
+              <Copy className="h-3.5 w-3.5 mr-2 text-text-muted" />
+              Copiar chave pública
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => onCopy(item.name, item.id)}>
             <Copy className="h-3.5 w-3.5 mr-2 text-text-muted" />
             Copiar nome
@@ -429,7 +479,7 @@ export function ItemCard({
                 Mover categoria
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {(['api', 'prompt', 'command', 'link'] as Category[]).map((cat) => (
+                {CategoryEnum.options.map((cat) => (
                   <DropdownMenuItem
                     key={cat}
                     disabled={cat === item.category}
