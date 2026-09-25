@@ -34,7 +34,7 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
     setLoading(true);
 
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const result = await api.unlock(password, vaultId);
       const settings = await api.getSettings();
       const { useVaultStore } = await import('../stores/vault-store');

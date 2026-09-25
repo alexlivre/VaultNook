@@ -44,13 +44,13 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
 
   React.useEffect(() => {
     if (open) {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       api.getInfo().then(setInfo);
     }
   }, [open]);
 
   const handleExport = async () => {
-    const api = window.devVaultApi;
+    const api = window.vaultNookApi;
     const result = await api.exportVault();
     if (result) {
       toast({ title: 'Vault exportado com sucesso', variant: 'success' });
@@ -58,7 +58,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
   };
 
   const handleImport = async () => {
-    const api = window.devVaultApi;
+    const api = window.vaultNookApi;
     const result = await api.importVault();
     if (result) {
       toast({
@@ -85,7 +85,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
     }
 
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const result = await api.changePassword({ currentPassword, newPassword, confirmPassword });
       toast({ title: 'Senha alterada com sucesso', variant: 'success' });
       setChangingPassword(false);
@@ -104,7 +104,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
     e.preventDefault();
     setRegenerateError('');
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const result = await api.regenerateRecoveryPhrase(regeneratePassword);
       setRegenerateOpen(false);
       setRegeneratePassword('');
@@ -120,7 +120,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
     setDeleteError('');
 
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       await api.deleteVault(deletePassword);
       onLock();
     } catch (err: unknown) {
@@ -131,7 +131,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
   const handleTimerChange = async (timer: number) => {
     setAutoLockTimer(timer as AutoLockOption);
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       await api.saveSettings(timer);
     } catch {
       // silent

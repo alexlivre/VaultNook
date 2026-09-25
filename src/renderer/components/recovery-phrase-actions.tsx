@@ -21,7 +21,7 @@ export function RecoveryPhraseActions({ phrase }: RecoveryPhraseActionsProps) {
 
   const handleSave = async () => {
     try {
-      const saved = await window.devVaultApi.saveRecoveryPhrase(phrase);
+      const saved = await window.vaultNookApi.saveRecoveryPhrase(phrase);
       if (saved) toast({ title: 'Frase salva em arquivo', variant: 'success' });
     } catch {
       toast({ title: 'Erro ao salvar', variant: 'destructive' });

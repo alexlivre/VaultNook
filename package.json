@@ -1,6 +1,6 @@
 {
-  "name": "devvault",
-  "productName": "DevVault",
+  "name": "vaultnook",
+  "productName": "VaultNook",
   "version": "0.1.0",
   "description": "Cofre digital pessoal para API keys, prompts, comandos e links.",
   "main": ".vite/build/main.js",

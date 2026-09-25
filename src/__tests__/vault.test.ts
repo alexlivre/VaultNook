@@ -4,7 +4,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
 
-const testDir = join(tmpdir(), 'devvault-test-' + Date.now());
+const testDir = join(tmpdir(), 'vaultnook-test-' + Date.now());
 vi.mock('electron', () => ({
   app: {
     getPath: () => testDir,

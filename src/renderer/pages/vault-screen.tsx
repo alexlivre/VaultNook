@@ -195,7 +195,7 @@ export function VaultScreen() {
 
   // Listen for system lock/suspend events
   React.useEffect(() => {
-    const api = window.devVaultApi;
+    const api = window.vaultNookApi;
     if (api?.onVaultLockedBySystem) {
       return api.onVaultLockedBySystem(() => {
         setIsLocked(true);
@@ -224,7 +224,7 @@ export function VaultScreen() {
         }
         clipboardTimeoutRef.current = setTimeout(async () => {
           try {
-            await window.devVaultApi.clearClipboard();
+            await window.vaultNookApi.clearClipboard();
             toast({ title: 'Área de transferência limpa por segurança', variant: 'default' });
           } catch {
             // silent
@@ -239,7 +239,7 @@ export function VaultScreen() {
 
   const handleLock = React.useCallback(async () => {
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       await api.lock();
       setIsLocked(true);
       setScreen('vault-manager');
@@ -254,7 +254,7 @@ export function VaultScreen() {
       if (!/^https?:\/\//i.test(finalUrl)) {
         finalUrl = 'https://' + finalUrl;
       }
-      await window.devVaultApi.openExternal(finalUrl);
+      await window.vaultNookApi.openExternal(finalUrl);
     } catch {
       toast({ title: 'URL inválida', variant: 'destructive' });
     }
@@ -263,7 +263,7 @@ export function VaultScreen() {
   const handleDuplicate = React.useCallback(
     async (item: Item) => {
       try {
-        const api = window.devVaultApi;
+        const api = window.vaultNookApi;
         await api.addItem({
           name: `${item.name} (cópia)`,
           value: item.value,
@@ -284,7 +284,7 @@ export function VaultScreen() {
   const handleMoveCategory = React.useCallback(
     async (id: string, category: Category) => {
       try {
-        const api = window.devVaultApi;
+        const api = window.vaultNookApi;
         await api.moveCategoryItems([id], category);
         moveCategoryItems([id], category);
         toast({ title: `Movido para ${CategoryLabel[category]}`, variant: 'success' });
@@ -300,7 +300,7 @@ export function VaultScreen() {
       const ids = Array.from(selectedItemIds);
       if (ids.length === 0) return;
       try {
-        const api = window.devVaultApi;
+        const api = window.vaultNookApi;
         await api.moveCategoryItems(ids, category);
         moveCategoryItems(ids, category);
         toast({ title: `${ids.length} itens movidos para ${CategoryLabel[category]}`, variant: 'success' });
@@ -315,7 +315,7 @@ export function VaultScreen() {
     const ids = Array.from(selectedItemIds);
     if (ids.length === 0) return;
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       await api.removeItems(ids);
       removeItems(ids);
       setBulkDeleteConfirmOpen(false);
@@ -330,7 +330,7 @@ export function VaultScreen() {
     'new-item': () => setAddDialogOpen(true),
     search: () => searchInputRef.current?.focus(),
     export: async () => {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const result = await api.exportVault();
       if (result) toast({ title: 'Vault exportado com sucesso', variant: 'success' });
     },
@@ -400,7 +400,7 @@ export function VaultScreen() {
       deletedItemRef.current = item;
 
       try {
-        const api = window.devVaultApi;
+        const api = window.vaultNookApi;
         await api.removeItem(id);
         removeItem(id);
 
@@ -414,7 +414,7 @@ export function VaultScreen() {
           duration: 5000,
           onUndo: async () => {
             if (!deletedItemRef.current) return;
-            const api = window.devVaultApi;
+            const api = window.vaultNookApi;
             await api.addItem(deletedItemRef.current);
             const updatedItems = await api.getItems();
             useVaultStore.getState().setItems(updatedItems);
@@ -437,7 +437,7 @@ export function VaultScreen() {
     async (id: string, current: boolean) => {
       toggleFavorite(id);
       try {
-        const api = window.devVaultApi;
+        const api = window.vaultNookApi;
         await api.toggleFavorite(id, !current);
       } catch {
         toggleFavorite(id);
@@ -457,7 +457,7 @@ export function VaultScreen() {
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-category-all" />
             <span className="text-sm font-medium text-text-primary">
-              {activeVaultName || 'DevVault'}
+              {activeVaultName || 'VaultNook'}
             </span>
           </div>
           <div className="flex items-stretch h-full gap-1">
@@ -814,7 +814,7 @@ export function VaultScreen() {
           commands={[
             { label: 'Adicionar item', shortcut: 'Ctrl+N', action: () => { setAddDialogOpen(true); } },
             { label: 'Auditoria de segurança', shortcut: '', action: () => { setAuditOpen(true); } },
-            { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { const api = window.devVaultApi; await api.exportVault(); } },
+            { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { const api = window.vaultNookApi; await api.exportVault(); } },
             { label: 'Travar vault', shortcut: 'Ctrl+L', action: () => { handleLock(); } },
           ]}
           items={items}

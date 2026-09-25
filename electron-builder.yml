@@ -1,5 +1,5 @@
 appId: com.alexlivre.devvault
-productName: DevVault
+productName: VaultNook
 directories:
   buildResources: build
   output: dist
@@ -19,7 +19,7 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  shortcutName: DevVault
+  shortcutName: VaultNook
   installerLanguages:
     - en_US
     - pt_BR

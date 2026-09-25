@@ -1,8 +1,8 @@
-import type { DevVaultApi, WindowControls } from './preload';
+import type { VaultNookApi, WindowControls } from './preload';
 
 declare global {
   interface Window {
-    devVaultApi: DevVaultApi;
+    vaultNookApi: VaultNookApi;
     windowControls: WindowControls;
   }
 }

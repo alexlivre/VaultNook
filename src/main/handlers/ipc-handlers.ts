@@ -207,7 +207,7 @@ export function registerIpcHandlers(): void {
     );
     const result = await dialog.showSaveDialog({
       title: 'Salvar frase de recuperação',
-      defaultPath: `devvault-recovery-phrase.txt`,
+      defaultPath: `vaultnook-recovery-phrase.txt`,
       filters: [{ name: 'Texto', extensions: ['txt'] }],
     });
     if (!result.canceled && result.filePath) {
@@ -221,7 +221,7 @@ export function registerIpcHandlers(): void {
     const data = await vault.exportVault();
     const result = await dialog.showSaveDialog({
       title: 'Exportar Vault',
-      defaultPath: `devvault-backup-${Date.now()}.json`,
+      defaultPath: `vaultnook-backup-${Date.now()}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {
@@ -250,7 +250,7 @@ export function registerIpcHandlers(): void {
     if (!raw) throw new Error('Vault não encontrado');
     const result = await dialog.showSaveDialog({
       title: 'Exportar Vault',
-      defaultPath: `devvault-export-${Date.now()}.json`,
+      defaultPath: `vaultnook-export-${Date.now()}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {

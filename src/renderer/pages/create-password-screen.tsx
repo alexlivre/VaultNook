@@ -54,7 +54,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
 
     setLoading(true);
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const result = await api.createVault(password, vaultName.trim(), hint.trim(), color);
       setNewPhrase(result.recoveryPhrase);
     } catch (err: unknown) {
@@ -115,7 +115,7 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
             >
               <Lock className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl font-semibold text-text-primary">DevVault</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">VaultNook</h1>
             <p className="text-sm text-text-muted">Crie seu novo cofre seguro</p>
           </div>
 

@@ -1,4 +1,4 @@
-# DevVault v2 — Especificação Funcional
+# VaultNook v2 — Especificação Funcional
 
 > **Propósito:** Aplicativo desktop para armazenar e gerenciar API keys, prompts, comandos e links de forma segura e local.
 >
@@ -8,7 +8,7 @@
 
 ## 1. Visão Geral
 
-DevVault é um cofre digital pessoal que permite ao usuário:
+VaultNook é um cofre digital pessoal que permite ao usuário:
 
 - Armazenar valores sensíveis (chaves de API) com proteção criptográfica
 - Organizar itens em categorias pré-definidas com identificação por cor

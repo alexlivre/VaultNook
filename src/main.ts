@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, powerMonitor } from 'electron';
 import path from 'node:path';
 import { registerIpcHandlers } from './main/handlers/ipc-handlers';
+import { migrateLegacyUserData } from './main/services/legacy-user-data';
 import * as vault from './main/services/vault';
 
 let mainWindow: BrowserWindow | null = null;
@@ -63,7 +64,8 @@ function registerPowerEvents() {
   powerMonitor.on('lock-screen', onSystemLock);
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await migrateLegacyUserData();
   registerIpcHandlers();
   registerWindowControls();
   registerPowerEvents();

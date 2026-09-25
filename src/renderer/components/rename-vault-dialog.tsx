@@ -56,7 +56,7 @@ export function RenameVaultDialog({ open, onOpenChange, vault, onRenamed }: Rena
     setLoading(true);
     setError('');
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       await api.renameVault(vault.id, name.trim(), color);
       toast({ title: 'Cofre atualizado com sucesso', variant: 'success' });
       onRenamed();

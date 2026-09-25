@@ -56,7 +56,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const loadVaults = React.useCallback(async () => {
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const list = await api.listVaults();
       setVaults(list);
     } catch {
@@ -70,7 +70,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const handleExport = async (vaultId: string) => {
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       await api.exportVaultFile(vaultId);
       toast({ title: 'Vault exportado', variant: 'success' });
     } catch (err: unknown) {
@@ -80,7 +80,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const handleToggleHidden = async (vaultId: string) => {
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const nowHidden = await api.toggleHidden(vaultId);
       await loadVaults();
       toast({
@@ -97,7 +97,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
     setDeleting(true);
     setDeleteError('');
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       await api.deleteVaultEntry(deleteVaultId, deletePassword);
       setDeleteVaultId(null);
       setDeletePassword('');
@@ -112,7 +112,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
 
   const handleImport = async () => {
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const result = await api.importVaultFile();
       if (result) {
         await loadVaults();
@@ -140,7 +140,7 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
             <Lock className="h-5 w-5 text-category-all" />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-text-primary">DevVault</h1>
+            <h1 className="text-base font-semibold text-text-primary">VaultNook</h1>
             <p className="text-[11px] text-text-muted">
               {vaultCount} cofre{vaultCount !== 1 ? 's' : ''}
               {hiddenCount > 0 && ` (${hiddenCount} oculto${hiddenCount !== 1 ? 's' : ''})`}

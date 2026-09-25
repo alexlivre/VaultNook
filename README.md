@@ -7,7 +7,7 @@
 
   <br/>
 
-  # 🔒 DevVault
+  # 🔒 VaultNook
 
   **Cofre digital pessoal para API keys, prompts, comandos e links.**
 
@@ -105,8 +105,8 @@
 
 ```bash
 # Clone o repositório
-git clone https://github.com/alexlivre/DevVault-Electron.git
-cd DevVault-Electron
+git clone https://github.com/alexlivre/VaultNook.git
+cd VaultNook
 
 # Instale as dependências
 npm install
@@ -135,11 +135,11 @@ npm start
 npm run package
 
 # Gera um instalador para Windows (NSIS)
-# Saída: dist/DevVault-0.1.0-setup.exe
+# Saída: dist/VaultNook-0.1.0-setup.exe
 npm run make
 ```
 
-Depois de rodar `npm run make` no Windows, o instalador estará em `dist/`. Execute o `.exe` do instalador para instalar o app (por usuário, sem admin). O app também pode ser executado diretamente em `dist/win-unpacked/DevVault.exe`.
+Depois de rodar `npm run make` no Windows, o instalador estará em `dist/`. Execute o `.exe` do instalador para instalar o app (por usuário, sem admin). O app também pode ser executado diretamente em `dist/win-unpacked/VaultNook.exe`.
 
 ---
 

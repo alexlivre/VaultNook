@@ -85,7 +85,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
 
     setLoading(true);
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       if (editItem) {
         await api.editItem({
           id: editItem.id,

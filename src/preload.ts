@@ -128,9 +128,9 @@ const windowControls = {
   },
 };
 
-export type DevVaultApi = typeof api;
+export type VaultNookApi = typeof api;
 export type WindowControls = typeof windowControls;
 
-contextBridge.exposeInMainWorld('devVaultApi', api);
+contextBridge.exposeInMainWorld('vaultNookApi', api);
 contextBridge.exposeInMainWorld('windowControls', windowControls);
 

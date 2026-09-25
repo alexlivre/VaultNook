@@ -22,7 +22,7 @@ export function App() {
   React.useEffect(() => {
     async function init() {
       try {
-        const api = window.devVaultApi;
+        const api = window.vaultNookApi;
         const result = await api.init();
         setVaults(result.vaults);
         setScreen('vault-manager');
@@ -35,7 +35,7 @@ export function App() {
 
   const handleSelectVault = React.useCallback(async (vaultId: string) => {
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const hint = await api.getVaultHint(vaultId);
       // Find vault name from store
       const store = useVaultStore.getState();

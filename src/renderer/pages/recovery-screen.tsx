@@ -29,7 +29,7 @@ export function RecoveryScreen({ vaultId, vaultName, onRecovered, onBack }: Reco
     }
     setLoading(true);
     try {
-      const api = window.devVaultApi;
+      const api = window.vaultNookApi;
       const result = await api.recover(vaultId, phrase, newPassword);
       const store = useVaultStore.getState();
       store.setItems(result.items);
