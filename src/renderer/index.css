@@ -1,25 +1,31 @@
 @import "tailwindcss";
 
 @theme {
-  --color-surface-base: #0a0a0f;
-  --color-surface-raised: #12121a;
-  --color-surface-overlay: #1a1a24;
-  --color-surface-hover: #22222e;
-  --color-text-primary: #f1f1f6;
-  --color-text-secondary: #a1a1b5;
-  --color-text-muted: #6b6b80;
-  --color-border-default: #2a2a3a;
-  --color-border-focus: #5b5bff;
-  --color-category-all: #8b5cf6;
+  --color-surface-base: #151b22;
+  --color-surface-raised: #1b222b;
+  --color-surface-overlay: #222b36;
+  --color-surface-hover: #2a3542;
+  --color-text-primary: #e8ecf1;
+  --color-text-secondary: #c2cad4;
+  --color-text-muted: #9aa5b4;
+  --color-border-default: #2e3947;
+  --color-border-strong: #4e5e74;
+  --color-border-focus: #c9a227;
+  --color-bone: #ece7d9;
+  --color-bone-hi: #fff8e8;
+  --color-bone-ink: #17150f;
+  --color-brass: #c9a227;
+  --color-category-all: #a78bfa;
   --color-category-api: #f59e0b;
-  --color-category-prompt: #3b82f6;
-  --color-category-command: #10b981;
-  --color-category-link: #f43f5e;
+  --color-category-prompt: #5ea1ff;
+  --color-category-command: #34d399;
+  --color-category-link: #fb7185;
   --color-category-keypair: #06b6d4;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-destructive: #ef4444;
-  --color-info: #3b82f6;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-destructive: #f87171;
+  --color-info: #5ea1ff;
+  --font-secret: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
@@ -37,17 +43,17 @@ body {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2a3a;
-  border-radius: 3px;
+  background: #3e4c5e;
+  border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a4a;
+  background: #4e5e74;
 }
 
 /* Drag region for frameless window */

@@ -174,7 +174,7 @@ export function PasswordGeneratorDialog({
                   max="64"
                   value={length}
                   onChange={(e) => setLength(Number(e.target.value))}
-                  className="w-full accent-category-all h-1.5 bg-surface-raised rounded-lg appearance-none cursor-pointer"
+                  className="w-full accent-brass h-1.5 bg-surface-raised rounded-lg appearance-none cursor-pointer"
                 />
               </div>
 
@@ -184,7 +184,7 @@ export function PasswordGeneratorDialog({
                     type="checkbox"
                     checked={uppercase}
                     onChange={(e) => setUppercase(e.target.checked)}
-                    className="rounded accent-category-all"
+                    className="rounded accent-brass"
                   />
                   <span>Maiúsculas (A-Z)</span>
                 </label>
@@ -193,7 +193,7 @@ export function PasswordGeneratorDialog({
                     type="checkbox"
                     checked={lowercase}
                     onChange={(e) => setLowercase(e.target.checked)}
-                    className="rounded accent-category-all"
+                    className="rounded accent-brass"
                   />
                   <span>Minúsculas (a-z)</span>
                 </label>
@@ -202,7 +202,7 @@ export function PasswordGeneratorDialog({
                     type="checkbox"
                     checked={numbers}
                     onChange={(e) => setNumbers(e.target.checked)}
-                    className="rounded accent-category-all"
+                    className="rounded accent-brass"
                   />
                   <span>Números (0-9)</span>
                 </label>
@@ -211,7 +211,7 @@ export function PasswordGeneratorDialog({
                     type="checkbox"
                     checked={symbols}
                     onChange={(e) => setSymbols(e.target.checked)}
-                    className="rounded accent-category-all"
+                    className="rounded accent-brass"
                   />
                   <span>Símbolos (!@#$)</span>
                 </label>
@@ -231,7 +231,7 @@ export function PasswordGeneratorDialog({
                   max="6"
                   value={wordCount}
                   onChange={(e) => setWordCount(Number(e.target.value))}
-                  className="w-full accent-category-all h-1.5 bg-surface-raised rounded-lg appearance-none cursor-pointer"
+                  className="w-full accent-brass h-1.5 bg-surface-raised rounded-lg appearance-none cursor-pointer"
                 />
               </div>
 
@@ -255,7 +255,7 @@ export function PasswordGeneratorDialog({
                       type="checkbox"
                       checked={capitalize}
                       onChange={(e) => setCapitalize(e.target.checked)}
-                      className="rounded accent-category-all"
+                      className="rounded accent-brass"
                     />
                     <span>Capitalizar</span>
                   </label>
@@ -264,7 +264,7 @@ export function PasswordGeneratorDialog({
                       type="checkbox"
                       checked={includeNumber}
                       onChange={(e) => setIncludeNumber(e.target.checked)}
-                      className="rounded accent-category-all"
+                      className="rounded accent-brass"
                     />
                     <span>Adicionar número</span>
                   </label>

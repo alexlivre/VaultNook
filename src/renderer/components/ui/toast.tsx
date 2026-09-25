@@ -59,7 +59,7 @@ const Toast = React.forwardRef<
         {onUndo && (
           <button
             onClick={onUndo}
-            className="text-xs font-medium text-category-all hover:underline cursor-pointer"
+            className="text-xs font-medium text-brass hover:underline cursor-pointer"
           >
             Desfazer
           </button>

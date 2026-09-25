@@ -8,13 +8,13 @@ let mainWindow: BrowserWindow | null = null;
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 680,
-    minWidth: 700,
+    width: 1180,
+    height: 720,
+    minWidth: 980,
     minHeight: 500,
     frame: false,
     titleBarStyle: 'hidden',
-    backgroundColor: '#0a0a0f',
+    backgroundColor: '#151b22',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -136,8 +136,8 @@ export function VaultManagerScreen({ onSelectVault, onCreateVault }: VaultManage
       {/* Header */}
       <header className="titlebar flex items-center justify-between border-b border-border-default pl-6 pr-0 h-14 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-category-all/10">
-            <Lock className="h-5 w-5 text-category-all" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brass/40 bg-brass/10">
+            <Lock className="h-5 w-5 text-brass" />
           </div>
           <div>
             <h1 className="text-base font-semibold text-text-primary">VaultNook</h1>
@@ -282,7 +282,7 @@ interface VaultCardProps {
 }
 
 function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDelete, formatDate }: VaultCardProps) {
-  const accentColor = vault.color || 'var(--color-category-all)';
+  const accentColor = vault.color || 'var(--color-brass)';
 
   return (
     <div
@@ -314,8 +314,8 @@ function VaultCard({ vault, onSelect, onRename, onExport, onToggleHidden, onDele
             <EyeOff className="h-3 w-3 text-text-muted shrink-0" />
           )}
           {vault.hasHint && (
-            <span className="text-[10px] text-text-muted bg-surface-overlay px-1.5 py-0.5 rounded">
-              💡 dica
+            <span className="rounded-full border border-brass/30 bg-brass/10 px-1.5 py-0.5 text-[10px] font-semibold text-brass">
+              dica
             </span>
           )}
         </div>

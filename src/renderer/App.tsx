@@ -109,7 +109,7 @@ export function App() {
       {screen === 'vault' && <VaultScreen />}
       {screen === 'loading' && (
         <div className="flex min-h-screen items-center justify-center bg-surface-base">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-default border-t-category-all" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-default border-t-brass" />
         </div>
       )}
     </ToastContextProvider>

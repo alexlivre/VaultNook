@@ -78,10 +78,10 @@ export function CreatePasswordScreen({ onCreated }: CreatePasswordScreenProps) {
               se esquecer a senha. Elas não podem ser recuperadas depois.
             </p>
             <div className="rounded-lg border border-border-default bg-surface-raised p-4">
-              <ol className="grid grid-cols-2 gap-2 text-sm text-text-primary">
+              <ol className="grid grid-cols-2 gap-2 font-secret text-sm text-text-primary">
                 {newPhrase.split(' ').map((word, i) => (
                   <li key={i} className="flex items-center gap-2">
-                    <span className="text-xs text-text-muted">{i + 1}.</span>
+                    <span className="text-[11px] font-semibold text-brass">{i + 1}.</span>
                     {word}
                   </li>
                 ))}

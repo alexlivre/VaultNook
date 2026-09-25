@@ -75,7 +75,7 @@ export function RenameVaultDialog({ open, onOpenChange, vault, onRenamed }: Rena
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-category-all/15 text-category-all">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brass/15 text-brass">
               <Pencil className="h-4 w-4" />
             </div>
             <div>

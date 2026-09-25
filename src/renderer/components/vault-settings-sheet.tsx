@@ -211,7 +211,7 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
                       className={cn(
                         'rounded-md border px-2 py-1.5 text-xs font-medium transition-all cursor-pointer',
                         autoLockTimer === option.value
-                          ? 'border-category-all bg-category-all/10 text-category-all'
+                          ? 'border-brass bg-brass/10 text-brass'
                           : 'border-border-default text-text-muted hover:border-text-muted'
                       )}
                     >
@@ -228,10 +228,10 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
                   <p className="text-xs text-text-muted">
                     A frase anterior deixou de valer. Guarde esta em local seguro.
                   </p>
-                  <ol className="grid grid-cols-2 gap-1 text-xs text-text-primary">
+                  <ol className="grid grid-cols-2 gap-1 font-secret text-xs text-text-primary">
                     {newPhrase.split(' ').map((word, i) => (
                       <li key={i} className="flex items-center gap-1.5">
-                        <span className="text-text-muted">{i + 1}.</span>
+                        <span className="font-semibold text-brass">{i + 1}.</span>
                         {word}
                       </li>
                     ))}

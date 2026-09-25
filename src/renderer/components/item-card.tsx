@@ -49,6 +49,7 @@ interface ItemCardProps {
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
+  onActivate?: (id: string) => void;
   onOpenExternal?: (url: string) => void;
   onOpenParamDialog?: (item: Item) => void;
   onOpenPromptDialog?: (item: Item) => void;
@@ -80,6 +81,7 @@ export function ItemCard({
   onToggleFavorite,
   onToggleReveal,
   onSelect,
+  onActivate,
   onOpenExternal,
   onOpenParamDialog,
   onOpenPromptDialog,
@@ -123,21 +125,23 @@ export function ItemCard({
       <div
         className={cn(
           'group flex items-center gap-3 rounded-lg border border-border-default bg-surface-raised px-3 py-2.5 transition-all duration-150 cursor-pointer select-none',
-          isSelected && 'border-category-all/50 bg-category-all/5',
-          isFocused && 'ring-2 ring-border-focus',
+          isSelected && 'border-brass/50 bg-brass/5',
+          isFocused && 'border-border-strong',
           !isSelected && 'hover:bg-surface-hover hover:shadow-sm',
           !disableAnimation && 'animate-fade-in-up'
         )}
         style={{
           borderLeftWidth: '3px',
           borderLeftColor: item.favorite
-            ? 'var(--color-category-all)'
+            ? 'var(--color-brass)'
             : `var(--color-category-${colorClass})`,
           animationDelay: disableAnimation ? '0ms' : `${Math.min(index * 20, 300)}ms`,
         }}
         onClick={(e) => {
           if (e.ctrlKey || e.metaKey) {
             onSelect(item.id);
+          } else {
+            onActivate?.(item.id);
           }
           onActivity();
         }}
@@ -160,7 +164,7 @@ export function ItemCard({
               {item.name}
             </span>
             {item.favorite && (
-              <Star className="h-3 w-3 fill-category-all text-category-all shrink-0" />
+              <Star className="h-3 w-3 fill-brass text-brass shrink-0" />
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
@@ -185,7 +189,7 @@ export function ItemCard({
                     e.stopPropagation();
                     onTagClick?.(tag);
                   }}
-                  className="inline-flex items-center text-[10px] text-text-muted bg-surface-overlay/80 hover:text-text-primary hover:bg-surface-hover rounded px-1.5 py-0.2 cursor-pointer border border-border-default/40"
+                  className="inline-flex items-center font-secret text-[10px] text-text-muted bg-surface-overlay/80 hover:text-brass hover:border-brass/40 rounded px-1.5 py-0.2 cursor-pointer border border-border-default/40"
                   title={`Filtrar por tag #${tag}`}
                 >
                   #{tag}
@@ -348,7 +352,7 @@ export function ItemCard({
                 <Star
                   className={cn(
                     'h-3.5 w-3.5',
-                    item.favorite && 'fill-category-all text-category-all'
+                    item.favorite && 'fill-brass text-brass'
                   )}
                 />
               </Button>

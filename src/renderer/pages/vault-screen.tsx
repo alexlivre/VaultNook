@@ -13,6 +13,7 @@ import {
   Settings,
   Command,
   Copy,
+  Star,
   Trash2,
   FolderInput,
 } from 'lucide-react';
@@ -49,6 +50,8 @@ import { VaultToolbar } from '../components/vault-toolbar';
 import { CommandParamDialog } from '../components/command-param-dialog';
 import { PromptViewDialog } from '../components/prompt-view-dialog';
 import { VaultAuditDialog } from '../components/vault-audit-dialog';
+import { ItemDetailPanel } from '../components/item-detail-panel';
+import { DeleteConfirmDialog } from '../components/delete-confirm-dialog';
 import { List } from 'react-window';
 
 const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; color: string }[] = [
@@ -74,6 +77,7 @@ interface VaultRowProps {
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
+  onActivate: (id: string) => void;
   onOpenExternal: (url: string) => void;
   onOpenParamDialog: (item: Item) => void;
   onOpenPromptDialog: (item: Item) => void;
@@ -98,6 +102,7 @@ function VaultRow({
   onToggleFavorite,
   onToggleReveal,
   onSelect,
+  onActivate,
   onOpenExternal,
   onOpenParamDialog,
   onOpenPromptDialog,
@@ -126,6 +131,7 @@ function VaultRow({
         onToggleFavorite={onToggleFavorite}
         onToggleReveal={onToggleReveal}
         onSelect={onSelect}
+        onActivate={onActivate}
         onOpenExternal={onOpenExternal}
         onOpenParamDialog={onOpenParamDialog}
         onOpenPromptDialog={onOpenPromptDialog}
@@ -175,6 +181,9 @@ export function VaultScreen() {
   const [promptItem, setPromptItem] = React.useState<Item | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = React.useState(false);
   const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
+  const [detailSelectedId, setDetailSelectedId] = React.useState<string | null>(null);
+  const [autoLockTimer, setAutoLockTimer] = React.useState(60);
+  const [deleteTarget, setDeleteTarget] = React.useState<Item | null>(null);
 
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -211,6 +220,33 @@ export function VaultScreen() {
     () => filteredItems(),
     [items, activeCategory, searchQuery, favoritesFirst, sortOption]
   );
+
+  const detailItem = React.useMemo(
+    () => displayItems.find((i) => i.id === detailSelectedId) ?? displayItems[0] ?? null,
+    [displayItems, detailSelectedId]
+  );
+
+  const favoritesCount = React.useMemo(() => items.filter((i) => i.favorite).length, [items]);
+
+  const topTags = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      for (const tag of item.tags || []) {
+        counts.set(tag, (counts.get(tag) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([tag]) => tag);
+  }, [items]);
+
+  React.useEffect(() => {
+    window.vaultNookApi
+      .getSettings()
+      .then((s) => setAutoLockTimer(s.autoLockTimer))
+      .catch(() => {});
+  }, []);
 
   const handleCopy = React.useCallback(
     async (value: string, itemId: string) => {
@@ -395,6 +431,14 @@ export function VaultScreen() {
     };
   }, [handleActivity]);
 
+  const requestDelete = React.useCallback(
+    (id: string) => {
+      const item = items.find((i) => i.id === id);
+      if (item) setDeleteTarget(item);
+    },
+    [items]
+  );
+
   const handleDelete = React.useCallback(
     async (id: string, name: string) => {
       const item = items.find((i) => i.id === id);
@@ -457,12 +501,19 @@ export function VaultScreen() {
       >
         {/* Titlebar */}
         <header className="titlebar flex items-center justify-between border-b border-border-default pl-4 pr-0 h-11 shrink-0">
-          <div className="flex items-center gap-2">
-            <Lock className="h-4 w-4 text-category-all" />
-            <span className="text-sm font-medium text-text-primary">
+          <button
+            onClick={handleLock}
+            className="flex items-center gap-2 rounded-md px-1 py-0.5 cursor-pointer"
+            title="Travar e trocar de cofre"
+          >
+            <Lock className="h-4 w-4 text-brass" />
+            <span className="text-sm font-semibold tracking-tight text-text-primary">
               {activeVaultName || 'VaultNook'}
             </span>
-          </div>
+            <span className="text-[11px] text-text-muted">
+              {items.length} {items.length === 1 ? 'item' : 'itens'}
+            </span>
+          </button>
           <div className="flex items-stretch h-full gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -507,73 +558,153 @@ export function VaultScreen() {
           <WindowControls />
         </header>
 
-        {/* Category Tabs */}
-        <div className="flex items-center gap-0.5 px-4 pt-3 pb-1 shrink-0 overflow-x-auto">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeCategory === tab.id;
-            const count =
-              tab.id === 'all'
-                ? items.length
-                : items.filter((i) => i.category === tab.id).length;
+        <div className="flex min-h-0 flex-1">
+          {/* Vault sidebar */}
+          <aside
+            className="w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border-default bg-surface-base/50 px-2.5 py-3 hidden md:flex"
+            aria-label="Navegação do cofre"
+          >
+            <button
+              onClick={handleLock}
+              className="mb-3 flex items-center gap-2.5 rounded-lg border border-border-default bg-surface-raised px-2.5 py-2 text-left cursor-pointer hover:border-text-muted/40"
+              title="Travar e trocar de cofre"
+            >
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-brass shadow-[0_0_10px_rgba(201,162,39,0.7)]" />
+              <span className="min-w-0">
+                <span className="block truncate text-xs font-semibold text-text-primary">
+                  {activeVaultName || 'VaultNook'}
+                </span>
+                <span className="block text-[10px] text-text-muted">trocar de cofre</span>
+              </span>
+            </button>
 
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setActiveCategory(tab.id);
-                  handleActivity();
-                }}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer',
-                  isActive
-                    ? 'text-text-primary bg-surface-raised shadow-sm'
-                    : 'text-text-muted hover:text-text-primary hover:bg-surface-hover'
-                )}
-              >
-                <Icon className={cn('h-3.5 w-3.5', tab.color)} />
-                {tab.label}
-                {count > 0 && (
-                  <span
-                    className={cn(
-                      'ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
-                      isActive ? 'bg-surface-overlay' : 'bg-transparent'
-                    )}
-                  >
+            <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              Categorias
+            </p>
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeCategory === tab.id && !searchQuery.startsWith('tag:');
+              const count =
+                tab.id === 'all'
+                  ? items.length
+                  : items.filter((i) => i.category === tab.id).length;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveCategory(tab.id);
+                    handleActivity();
+                  }}
+                  className={cn(
+                    'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors cursor-pointer text-left',
+                    isActive
+                      ? 'bg-surface-raised text-text-primary shadow-[inset_2px_0_0_var(--color-brass)]'
+                      : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
+                  )}
+                >
+                  <Icon className={cn('h-3.5 w-3.5 shrink-0', tab.color)} />
+                  <span className="truncate">{tab.label}</span>
+                  <span className="ml-auto rounded-full border border-border-default bg-surface-base px-1.5 py-px text-[10px] tabular-nums text-text-muted">
                     {count}
                   </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
 
-        {/* Active tab indicator */}
-        <div
-          className="h-0.5 mx-4 transition-all duration-200 rounded-full"
-          style={{
-            backgroundColor: `var(--color-category-${activeCategory === 'all' ? 'all' : activeCategory})`,
-            width: `${100 / tabs.length}%`,
-            transform: `translateX(${tabs.findIndex((t) => t.id === activeCategory) * 100}%)`,
-          }}
-        />
+            <button
+              onClick={() => {
+                setSearchQuery(searchQuery === 'is:fav' ? '' : 'is:fav');
+                handleActivity();
+              }}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors cursor-pointer text-left',
+                searchQuery === 'is:fav'
+                  ? 'bg-surface-raised text-text-primary shadow-[inset_2px_0_0_var(--color-brass)]'
+                  : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
+              )}
+            >
+              <Star className="h-3.5 w-3.5 shrink-0 text-brass" />
+              <span className="truncate">Favoritos</span>
+              <span className="ml-auto rounded-full border border-border-default bg-surface-base px-1.5 py-px text-[10px] tabular-nums text-text-muted">
+                {favoritesCount}
+              </span>
+            </button>
 
-        {/* Search + Sort + Filters + Audit */}
-        <VaultToolbar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          favoritesFirst={favoritesFirst}
-          onToggleFavoritesFirst={() => setFavoritesFirst(!favoritesFirst)}
-          sortOption={sortOption}
-          onSortChange={setSortOption}
-          onOpenAudit={() => setAuditOpen(true)}
-          searchInputRef={searchInputRef}
-        />
+            {topTags.length > 0 && (
+              <>
+                <p className="px-2 pb-1 pt-3 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                  Tags
+                </p>
+                <div className="flex flex-wrap gap-1.5 px-1">
+                  {topTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        setSearchQuery(searchQuery === `tag:${tag}` ? '' : `tag:${tag}`);
+                        handleActivity();
+                      }}
+                      className={cn(
+                        'rounded-full border px-2 py-0.5 font-secret text-[11px] cursor-pointer',
+                        searchQuery === `tag:${tag}`
+                          ? 'border-brass/50 text-brass'
+                          : 'border-border-default text-text-muted hover:border-brass/40 hover:text-brass'
+                      )}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="mt-auto border-t border-border-default px-2 pt-2 text-[11px] leading-relaxed text-text-muted">
+              Trava em{' '}
+              {autoLockTimer === 0
+                ? 'manual'
+                : autoLockTimer < 60
+                  ? `${autoLockTimer} s`
+                  : `${Math.round(autoLockTimer / 60)} min`}
+              {' · área limpa em 30 s'}
+            </div>
+          </aside>
+
+          {/* Main column */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                {/* Search + Sort + Filters + Audit */}
+                <VaultToolbar
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  favoritesFirst={favoritesFirst}
+                  onToggleFavoritesFirst={() => setFavoritesFirst(!favoritesFirst)}
+                  sortOption={sortOption}
+                  onSortChange={setSortOption}
+                  onOpenAudit={() => setAuditOpen(true)}
+                  searchInputRef={searchInputRef}
+                />
+              </div>
+              <div className="shrink-0 pr-4 pt-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    setAddDialogOpen(true);
+                    handleActivity();
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Novo
+                </Button>
+              </div>
+            </div>
 
         {/* Bulk Action Bar */}
         {selectedItemIds.size > 0 && (
-          <div className="mx-4 mb-1 flex items-center gap-2 rounded-md bg-category-all/10 border border-category-all/20 px-3 py-1.5 text-xs shrink-0">
-            <span className="text-text-secondary font-medium">{selectedItemIds.size} selecionado(s)</span>
+          <div className="mx-4 mb-1 flex items-center gap-2 rounded-md bg-brass/10 border border-brass/30 px-3 py-1.5 text-xs shrink-0">
+            <span className="font-semibold text-brass">{selectedItemIds.size} selecionado(s)</span>
             <div className="flex-1" />
 
             <Button
@@ -689,12 +820,13 @@ export function VaultScreen() {
                   focusedIndex,
                   onCopy: handleCopy,
                   onEdit: setEditItem,
-                  onDelete: handleDelete,
+                  onDelete: requestDelete,
                   onDuplicate: handleDuplicate,
                   onMoveCategory: handleMoveCategory,
                   onToggleFavorite: handleToggleFavorite,
                   onToggleReveal: toggleReveal,
                   onSelect: toggleItemSelection,
+                  onActivate: setDetailSelectedId,
                   onOpenExternal: handleOpenExternal,
                   onOpenParamDialog: (it: Item) => setParamItem(it),
                   onOpenPromptDialog: (it: Item) => setPromptItem(it),
@@ -707,36 +839,35 @@ export function VaultScreen() {
           )}
         </div>
 
-        {/* Floating Add Button */}
-        <div className="fixed bottom-4 right-4 z-40">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="primary"
-                className="h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow"
-                onClick={() => {
-                  setAddDialogOpen(true);
-                  handleActivity();
-                }}
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">Adicionar item (Ctrl+N)</TooltipContent>
-          </Tooltip>
-        </div>
-
-        {/* Keyboard shortcut hint */}
-        <div className="fixed bottom-4 left-4 z-40">
-          <div className="flex items-center gap-2 rounded-md bg-surface-overlay/80 backdrop-blur-sm border border-border-default px-2.5 py-1.5 text-[10px] text-text-muted">
-            <span>Ctrl+N</span>
-            <span className="text-text-muted/50">|</span>
-            <span>Ctrl+F</span>
-            <span className="text-text-muted/50">|</span>
-            <span>↑ / ↓ navegar</span>
-            <span className="text-text-muted/50">|</span>
-            <span>Enter copiar</span>
+            {/* Status bar */}
+            <div className="flex shrink-0 items-center gap-2 border-t border-border-default px-4 py-1.5 text-[11px] text-text-muted">
+              <span className="tabular-nums">
+                {displayItems.length} {displayItems.length === 1 ? 'item' : 'itens'}
+              </span>
+              <span className="opacity-40">|</span>
+              <span className="hidden sm:inline">Ctrl+K comandos</span>
+              <span className="hidden opacity-40 sm:inline">|</span>
+              <span className="hidden sm:inline">↑↓ navegar</span>
+              <span className="hidden opacity-40 sm:inline">|</span>
+              <span className="hidden sm:inline">Enter copiar</span>
+            </div>
           </div>
+
+          {/* Item detail panel */}
+          <ItemDetailPanel
+            item={detailItem}
+            isRevealed={detailItem ? revealedItemIds.has(detailItem.id) : false}
+            isCopied={detailItem ? copiedId === detailItem.id : false}
+            onCopy={handleCopy}
+            onEdit={setEditItem}
+            onDelete={requestDelete}
+            onDuplicate={handleDuplicate}
+            onToggleFavorite={handleToggleFavorite}
+            onToggleReveal={toggleReveal}
+            onOpenExternal={handleOpenExternal}
+            onOpenParamDialog={(it: Item) => setParamItem(it)}
+            onOpenPromptDialog={(it: Item) => setPromptItem(it)}
+          />
         </div>
 
         {/* Dialogs */}
@@ -790,6 +921,19 @@ export function VaultScreen() {
             if (!open) setPromptItem(null);
           }}
           item={promptItem}
+        />
+
+        {/* Single Delete Confirm */}
+        <DeleteConfirmDialog
+          open={deleteTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          itemName={deleteTarget?.name ?? ''}
+          onConfirm={() => {
+            if (deleteTarget) handleDelete(deleteTarget.id, deleteTarget.name);
+            setDeleteTarget(null);
+          }}
         />
 
         {/* Bulk Delete Confirm Alert */}

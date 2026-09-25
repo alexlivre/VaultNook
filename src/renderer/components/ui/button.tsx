@@ -14,7 +14,7 @@ const buttonVariants = cva(
         secondary: 'bg-surface-overlay text-text-primary hover:bg-surface-hover',
         ghost: 'text-text-secondary hover:text-text-primary hover:bg-surface-hover',
         link: 'text-text-primary underline-offset-4 hover:underline',
-        primary: 'bg-category-all text-white hover:opacity-90',
+        primary: 'bg-bone text-bone-ink hover:bg-bone-hi',
       },
       size: {
         default: 'h-9 px-4 py-2',

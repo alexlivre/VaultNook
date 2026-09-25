@@ -60,8 +60,8 @@ export function RecoveryScreen({ vaultId, vaultName, onRecovered, onBack }: Reco
           </button>
 
           <div className="flex flex-col items-center gap-3">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-category-all/10">
-              <Shield className="h-8 w-8 text-category-all" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border-default bg-surface-raised">
+              <Shield className="h-8 w-8 text-brass" />
             </div>
             <h1 className="text-2xl font-semibold text-text-primary">Recuperar {vaultName}</h1>
             <p className="text-sm text-text-muted">Digite sua frase de recuperação e defina uma nova senha</p>
@@ -75,7 +75,7 @@ export function RecoveryScreen({ vaultId, vaultName, onRecovered, onBack }: Reco
                 value={phrase}
                 onChange={(e) => setPhrase(e.target.value)}
                 placeholder="palavra1 palavra2 ... palavra12"
-                className="flex h-20 w-full rounded-md border border-border-default bg-surface-raised px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus resize-none"
+                className="flex h-20 w-full rounded-md border border-border-default bg-surface-raised px-3 py-2 font-secret text-[13px] text-text-primary placeholder:text-text-muted placeholder:font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus resize-none"
               />
             </div>
             <div className="space-y-2">

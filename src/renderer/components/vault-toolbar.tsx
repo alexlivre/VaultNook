@@ -68,8 +68,12 @@ export function VaultToolbar({
         <Tooltip>
           <TooltipTrigger asChild>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <ArrowUpDown className="h-4 w-4 text-text-muted hover:text-text-primary" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-xl border border-border-default bg-surface-raised text-text-muted hover:text-brass"
+              >
+                <ArrowUpDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
@@ -80,7 +84,7 @@ export function VaultToolbar({
             <DropdownMenuItem
               key={opt}
               onClick={() => onSortChange(opt)}
-              className={cn(sortOption === opt && 'font-semibold text-category-all')}
+              className={cn(sortOption === opt && 'font-semibold text-brass')}
             >
               {sortLabels[opt]}
             </DropdownMenuItem>
@@ -94,7 +98,7 @@ export function VaultToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-text-muted hover:text-category-all"
+            className="h-10 w-10 shrink-0 rounded-xl border border-border-default bg-surface-raised text-text-muted hover:text-brass"
             onClick={onOpenAudit}
           >
             <ShieldCheck className="h-4 w-4" />
@@ -109,7 +113,10 @@ export function VaultToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className={cn('h-8 w-8', favoritesFirst && 'text-category-all')}
+            className={cn(
+              'h-10 w-10 shrink-0 rounded-xl border border-border-default bg-surface-raised text-text-muted',
+              favoritesFirst && 'border-brass/50 bg-brass/10 text-brass'
+            )}
             onClick={onToggleFavoritesFirst}
           >
             <Star className={cn('h-4 w-4', favoritesFirst && 'fill-current')} />

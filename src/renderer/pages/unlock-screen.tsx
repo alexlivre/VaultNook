@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Lock, Shield, ArrowLeft } from 'lucide-react';
+import { Lock, Shield, ArrowLeft, Lightbulb } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -74,8 +74,8 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
 
         {/* Logo */}
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-category-all/10">
-            <Lock className="h-8 w-8 text-category-all" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border-default bg-surface-raised">
+            <Lock className="h-8 w-8 text-brass" />
           </div>
           <h1 className="text-2xl font-semibold text-text-primary">{vaultName}</h1>
           <p className="text-sm text-text-muted">Digite sua senha mestra para desbloquear</p>
@@ -99,9 +99,10 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
               autoFocus
             />
             {vaultHint && (
-              <p className="text-xs text-text-muted mt-1">
-                💡 Dica: {vaultHint}
-              </p>
+              <div className="mt-2 flex items-start gap-2 rounded-lg border border-border-default bg-surface-raised p-2.5 text-xs text-text-secondary">
+                <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brass" />
+                Dica: {vaultHint}
+              </div>
             )}
           </div>
 
@@ -121,7 +122,7 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <Shield className="h-4 w-4 animate-spin" />
+                <Shield className="h-4 w-4 animate-pulse" />
                 Desbloqueando...
               </span>
             ) : (
@@ -149,10 +150,10 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
             <p className="text-sm text-text-muted">
               Sua nova frase de recuperação (a antiga não vale mais). Anote estas 12 palavras:
             </p>
-            <ol className="grid grid-cols-2 gap-2 rounded-lg bg-surface-overlay p-4 text-sm text-text-primary">
+            <ol className="grid grid-cols-2 gap-2 rounded-lg bg-surface-base p-4 text-left font-secret text-[13px] text-text-primary">
               {migrationPhrase.split(' ').map((word, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <span className="text-xs text-text-muted">{i + 1}.</span>
+                  <span className="text-[11px] font-semibold text-brass">{i + 1}.</span>
                   {word}
                 </li>
               ))}

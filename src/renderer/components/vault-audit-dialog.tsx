@@ -60,7 +60,7 @@ export function VaultAuditDialog({ open, onOpenChange, onEditItem }: VaultAuditD
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-category-all/15 text-category-all">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brass/15 text-brass">
               <ShieldCheck className="h-4 w-4" />
             </div>
             <div>
@@ -130,11 +130,11 @@ export function VaultAuditDialog({ open, onOpenChange, onEditItem }: VaultAuditD
               onClick={() => setFilterType(filterType === 'stale' ? 'all' : 'stale')}
               className={`rounded-lg border p-3 text-left transition-colors cursor-pointer ${
                 filterType === 'stale'
-                  ? 'border-category-all bg-category-all/10'
+                  ? 'border-brass bg-brass/10'
                   : 'border-border-default bg-surface-raised hover:bg-surface-hover'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-category-all mb-1">
+              <div className="flex items-center gap-1.5 text-brass mb-1">
                 <Clock className="h-3.5 w-3.5" />
                 <span className="text-xs font-semibold">&gt; 180 dias</span>
               </div>
@@ -157,7 +157,7 @@ export function VaultAuditDialog({ open, onOpenChange, onEditItem }: VaultAuditD
               {filterType !== 'all' && (
                 <button
                   onClick={() => setFilterType('all')}
-                  className="text-category-all hover:underline cursor-pointer"
+                  className="text-brass hover:underline cursor-pointer"
                 >
                   Ver todos
                 </button>
