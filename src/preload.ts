@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { z } from 'zod';
 import { IPC_CHANNELS } from './ipc-channels';
-import type { CreateItem, EditItem, ChangePassword, Item, VaultInfo, ImportResult, VaultEntry } from './renderer/types';
+import type { Category, CreateItem, EditItem, ChangePassword, Item, VaultInfo, ImportResult, VaultEntry } from './renderer/types';
 
 const CreatePasswordPayload = z.object({
   password: z.string().min(8),
@@ -113,7 +113,9 @@ const api = {
   onVaultLockedBySystem: (callback: () => void) => {
     const handler = () => callback();
     ipcRenderer.on('vault-locked-by-system', handler);
-    return () => ipcRenderer.removeListener('vault-locked-by-system', handler);
+    return () => {
+      ipcRenderer.removeListener('vault-locked-by-system', handler);
+    };
   },
 };
 
@@ -124,7 +126,9 @@ const windowControls = {
   onMaximizeChange: (callback: (maximized: boolean) => void) => {
     const handler = (_event: unknown, maximized: boolean) => callback(maximized);
     ipcRenderer.on('window:maximize-changed', handler);
-    return () => ipcRenderer.removeListener('window:maximize-changed', handler);
+    return () => {
+      ipcRenderer.removeListener('window:maximize-changed', handler);
+    };
   },
 };
 

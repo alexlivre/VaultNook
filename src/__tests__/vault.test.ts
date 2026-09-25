@@ -29,6 +29,7 @@ const makeItem = (overrides: Record<string, unknown> = {}) => ({
   value: 'sk_test_123',
   description: '',
   category: 'api' as const,
+  tags: [] as string[],
   favorite: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
