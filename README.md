@@ -135,7 +135,7 @@ npm start
 npm run package
 
 # Gera um instalador para Windows (NSIS)
-# Saída: dist/VaultNook-0.1.0-setup.exe
+# Saída: dist/VaultNook Setup 0.1.0.exe
 npm run make
 ```
 
