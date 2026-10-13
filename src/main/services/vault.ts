@@ -14,7 +14,7 @@ import { restrictPathAclOnce } from './fs-utils';
 import { getVaultPath, getVaultsDir, saveVault } from './vault/storage';
 import { toVaultKey, unwrapMasterKey } from './vault/key';
 import { migrateToV3 } from './vault/migration';
-import { normalizeVaultData, vaultState } from './vault/state';
+import { normalizeVaultData, seedRotationAlerts, vaultState } from './vault/state';
 import type { ChangePassword } from '../../shared/schemas';
 
 export { hasItem, getAllItems, addItem, editItem, removeItem, removeItems, moveCategoryItems } from './vault/items';
@@ -62,6 +62,7 @@ export async function createVault(password: string, hint: string = ''): Promise<
     hint,
     items: [],
     projects: [],
+    rotationSeeded: true,
     settings: { autoLockTimer: 60 },
   };
   vaultState.key = masterKey;
@@ -169,6 +170,7 @@ export async function recoverVault(vaultId: string, phrase: string, newPassword:
 
   vaultState.key?.zeroize();
   const data = normalizeVaultData(parsed);
+  seedRotationAlerts(data);
   vaultState.data = data;
   vaultState.key = toVaultKey(master);
   vaultState.activeVaultId = vaultId;

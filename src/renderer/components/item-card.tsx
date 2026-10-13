@@ -13,6 +13,7 @@ import {
   CopyPlus,
   Folder,
   FolderInput,
+  RotateCw,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -26,7 +27,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { cn, maskValue, truncateValue, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
+import { cn, maskValue, truncateValue, formatRelativeTime, hasCommandParams, isRotationDue, itemToJson } from '../lib/utils';
 import type { Item, Category, Project } from '../types';
 import { CategoryLabel, Category as CategoryEnum } from '../types';
 import { CategoryIcon, categoryMeta } from './category-icon';
@@ -46,6 +47,7 @@ interface ItemCardProps {
   onMoveProject?: (id: string, projectId: string) => void;
   projects?: Project[];
   showProjectBadge?: boolean;
+  onMarkRotated?: (item: Item) => void;
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
@@ -73,6 +75,7 @@ export function ItemCard({
   onMoveProject,
   projects,
   showProjectBadge = false,
+  onMarkRotated,
   onToggleFavorite,
   onToggleReveal,
   onSelect,
@@ -150,6 +153,12 @@ export function ItemCard({
             </span>
             {item.favorite && (
               <Star className="h-3 w-3 fill-brass text-brass shrink-0" />
+            )}
+            {isRotationDue(item) && (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-warning/40 bg-warning/10 px-1.5 py-px text-[10px] font-medium text-warning">
+                <RotateCw className="h-2.5 w-2.5" />
+                Rotacionar
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
@@ -511,6 +520,13 @@ export function ItemCard({
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+          )}
+
+          {onMarkRotated && item.rotationDueAt > 0 && (
+            <DropdownMenuItem onClick={() => onMarkRotated(item)}>
+              <RotateCw className="h-3.5 w-3.5 mr-2" />
+              Marcar como rotacionada
+            </DropdownMenuItem>
           )}
 
           <DropdownMenuItem onClick={() => onEdit(item)}>

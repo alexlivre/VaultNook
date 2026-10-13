@@ -50,6 +50,54 @@ export function itemToJson(item: Item): string {
   );
 }
 
+export interface TagFrequency {
+  tag: string;
+  count: number;
+}
+
+export function collectTagFrequency(items: Pick<Item, 'tags'>[]): TagFrequency[] {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    for (const tag of item.tags || []) {
+      counts.set(tag, (counts.get(tag) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([tag, count]) => ({ tag, count }));
+}
+
+export function filterTagSuggestions(
+  all: TagFrequency[],
+  query: string,
+  exclude: string[],
+  limit: number = 5
+): TagFrequency[] {
+  const normalized = query.trim().toLowerCase().replace(/^#/, '');
+  if (!normalized) return [];
+  const excluded = new Set(exclude.map((tag) => tag.toLowerCase()));
+  return all
+    .filter((entry) => entry.tag.includes(normalized) && !excluded.has(entry.tag))
+    .slice(0, limit);
+}
+
+const DAY_MS = 86400000;
+
+export function isRotationDue(item: Pick<Item, 'rotationDueAt'>): boolean {
+  return item.rotationDueAt > 0 && Date.now() >= item.rotationDueAt;
+}
+
+export function describeRotation(dueAt: number): string {
+  if (!dueAt) return 'sem rotação';
+  const now = Date.now();
+  if (now >= dueAt) {
+    const days = Math.floor((now - dueAt) / DAY_MS);
+    return days <= 0 ? 'vence hoje' : `vencida há ${days} dia${days > 1 ? 's' : ''}`;
+  }
+  const days = Math.ceil((dueAt - now) / DAY_MS);
+  return `vence em ${days} dia${days > 1 ? 's' : ''}`;
+}
+
 export function maskValue(value: string): string {
   if (value.length <= 8) return '••••••••';
   return value.substring(0, 4) + '••••••••' + value.substring(value.length - 4);

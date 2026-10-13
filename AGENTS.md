@@ -30,9 +30,10 @@ All IPC passes through `src/main/handlers/ipc-handlers.ts` (34 handlers), and ev
 - v1/v2 vaults migrate to v3 on first unlock and return a new recovery phrase exactly once.
 
 ### Data model
-- `VaultData.items: StoredItem[]` plus `VaultData.projects: StoredProject[]`; each item carries an optional `projectId` ('' = unassigned). Project names are encrypted with the master key; ids and colors are plaintext.
-- New fields are additive and keep `formatVersion: 3`: `normalizeVaultData` (`vault/state.ts`) fills `projects: []` / `projectId: ''` in `loadVault`, `unlockVault` and `recoverVault`, so vaults written before a field existed still open without migration.
-- File-level compatibility with older builds: they ignore unknown fields and preserve the `projects` array, but re-saving an item in an older build drops that item's `projectId` (assignment lost, item falls back to "Sem projeto").
+- `VaultData.items: StoredItem[]` plus `VaultData.projects: StoredProject[]`; each item carries an optional `projectId` ('' = unassigned), plaintext `rotationDueAt` / `rotationIntervalDays` (0 = off) and an encrypted `rotationUrl`. Project names and rotation links are encrypted with the master key; ids, colors and dates are plaintext.
+- New fields are additive and keep `formatVersion: 3`: `normalizeVaultData` (`vault/state.ts`) fills `projects: []` / `projectId: ''` / rotation defaults in `loadVault`, `unlockVault` and `recoverVault`, so vaults written before a field existed still open without migration.
+- `seedRotationAlerts` (`vault/state.ts`) marks every api/keypair item once when a vault from an older build is first loaded — `loadVault` saves the change; `recoverVault` and `migrateToV3` apply it too. The persisted `rotationSeeded` flag prevents any future version from repeating the mass alert; fresh vaults are created with `rotationSeeded: true`.
+- File-level compatibility with older builds: they ignore unknown fields and preserve the `projects` array, but re-saving an item in an older build drops that item's `projectId` and rotation fields.
 
 ### Storage
 - Vaults are registered in `vaults.json` and stored as `vaults/<id>.json` under `app.getPath('userData')` (`src/main/services/vault-registry.ts`; vault file logic lives in `src/main/services/vault/` — `state`, `storage`, `key`, `items`, `projects`, `backup`, `migration` — with `vault.ts` as the facade).
@@ -49,7 +50,7 @@ All IPC passes through `src/main/handlers/ipc-handlers.ts` (34 handlers), and ev
 
 ## Common Workflows
 - `npm start` — development with HMR (Vite + electronmon).
-- `npm run test:run` — the suite once (7 suites / 77 tests in `src/__tests__/`). **Mandatory before any push or deploy; must finish with 0 failures.**
+- `npm run test:run` — the suite once (7 suites / 87 tests in `src/__tests__/`). **Mandatory before any push or deploy; must finish with 0 failures.**
 - `npm run lint` and `npx tsc --noEmit` — lint and typecheck. Run `tsc` explicitly: neither the lint nor the tests check types.
 - `npm run build` — the three bundles; `npm run package` — portable directory; `npm run make` — NSIS installer. This project has no hosting, so **`npm run make` is the equivalent of a production deploy**.
 - **"Compilar a aplicação" (user wording) means `npm run package` + `npm run make`** — generate both executables; `npm run build` alone does not count.

@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
+  collectTagFrequency,
+  describeRotation,
+  filterTagSuggestions,
   generateCustomPassword,
   generatePassphrase,
   calculateSecretAudit,
+  isRotationDue,
   maskValue,
   truncateValue,
 } from '../renderer/lib/utils';
@@ -64,6 +68,9 @@ describe('utils', () => {
           category: 'api',
           tags: [],
           projectId: '',
+          rotationDueAt: 0,
+          rotationIntervalDays: 0,
+          rotationUrl: '',
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -77,6 +84,9 @@ describe('utils', () => {
           category: 'api',
           tags: [],
           projectId: '',
+          rotationDueAt: 0,
+          rotationIntervalDays: 0,
+          rotationUrl: '',
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -90,6 +100,9 @@ describe('utils', () => {
           category: 'api',
           tags: [],
           projectId: '',
+          rotationDueAt: 0,
+          rotationIntervalDays: 0,
+          rotationUrl: '',
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -103,6 +116,9 @@ describe('utils', () => {
           category: 'api',
           tags: [],
           projectId: '',
+          rotationDueAt: 0,
+          rotationIntervalDays: 0,
+          rotationUrl: '',
           favorite: false,
           createdAt: twoHundredDaysAgo,
           updatedAt: twoHundredDaysAgo,
@@ -131,6 +147,9 @@ describe('utils', () => {
           category: 'api',
           tags: [],
           projectId: '',
+          rotationDueAt: 0,
+          rotationIntervalDays: 0,
+          rotationUrl: '',
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -144,6 +163,9 @@ describe('utils', () => {
           category: 'api',
           tags: [],
           projectId: '',
+          rotationDueAt: 0,
+          rotationIntervalDays: 0,
+          rotationUrl: '',
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -167,6 +189,49 @@ describe('utils', () => {
     it('truncateValue shortens long string with ellipsis', () => {
       expect(truncateValue('Hello world', 5)).toBe('Hello...');
       expect(truncateValue('Hello', 10)).toBe('Hello');
+    });
+  });
+
+  describe('tag helpers', () => {
+    it('collects tag frequency sorted by count then name', () => {
+      const frequency = collectTagFrequency([
+        { tags: ['prod', 'dev'] },
+        { tags: ['prod'] },
+        { tags: ['cloud'] },
+      ]);
+      expect(frequency).toEqual([
+        { tag: 'prod', count: 2 },
+        { tag: 'cloud', count: 1 },
+        { tag: 'dev', count: 1 },
+      ]);
+    });
+
+    it('filters suggestions by query, excluding selected tags', () => {
+      const all = [
+        { tag: 'prod', count: 2 },
+        { tag: 'produção', count: 1 },
+        { tag: 'dev', count: 1 },
+      ];
+      expect(filterTagSuggestions(all, 'pro', ['prod'])).toEqual([{ tag: 'produção', count: 1 }]);
+      expect(filterTagSuggestions(all, '#prod', [])).toEqual([
+        { tag: 'prod', count: 2 },
+        { tag: 'produção', count: 1 },
+      ]);
+      expect(filterTagSuggestions(all, '', [])).toEqual([]);
+    });
+  });
+
+  describe('rotation helpers', () => {
+    it('isRotationDue detects overdue items only', () => {
+      expect(isRotationDue({ rotationDueAt: 0 })).toBe(false);
+      expect(isRotationDue({ rotationDueAt: Date.now() - 1000 })).toBe(true);
+      expect(isRotationDue({ rotationDueAt: Date.now() + 100000 })).toBe(false);
+    });
+
+    it('describeRotation formats the due status', () => {
+      expect(describeRotation(0)).toBe('sem rotação');
+      expect(describeRotation(Date.now() - 2 * 86400000 - 60000)).toBe('vencida há 2 dias');
+      expect(describeRotation(Date.now() + 2.5 * 86400000)).toBe('vence em 3 dias');
     });
   });
 });

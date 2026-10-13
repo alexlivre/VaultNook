@@ -56,12 +56,30 @@ describe('ImportedVaultSchema', () => {
     };
     expect(ImportedVaultSchema.safeParse(withProjects).success).toBe(true);
   });
+
+  it('accepts items with rotation fields', () => {
+    const withRotation = {
+      ...validV3,
+      items: [
+        {
+          ...validV3.items[0],
+          rotationDueAt: 123,
+          rotationIntervalDays: 30,
+          rotationUrl: encrypted,
+        },
+      ],
+    };
+    expect(ImportedVaultSchema.safeParse(withRotation).success).toBe(true);
+  });
 });
 
 describe('CreateItemSchema', () => {
-  it('defaults projectId to empty string and tags to empty array', () => {
+  it('defaults projectId, tags and rotation fields', () => {
     const parsed = CreateItemSchema.parse({ name: 'x', value: 'y', category: 'api' });
     expect(parsed.projectId).toBe('');
     expect(parsed.tags).toEqual([]);
+    expect(parsed.rotationDueAt).toBe(0);
+    expect(parsed.rotationIntervalDays).toBe(0);
+    expect(parsed.rotationUrl).toBe('');
   });
 });

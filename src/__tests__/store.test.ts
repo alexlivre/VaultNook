@@ -11,6 +11,9 @@ const makeItem = (overrides: Partial<Item> = {}): Item => ({
   category: 'api',
   tags: [],
   projectId: '',
+  rotationDueAt: 0,
+  rotationIntervalDays: 0,
+  rotationUrl: '',
   favorite: false,
   createdAt: 1000,
   updatedAt: 1000,
@@ -214,6 +217,18 @@ describe('vault store filteredItems', () => {
       useVaultStore.getState().setActiveProject('none');
       expect(useVaultStore.getState().searchQuery).toBe('');
       expect(useVaultStore.getState().activeProjectId).toBe('none');
+    });
+  });
+
+  describe('rotation filter', () => {
+    it('filters by the is:due token (overdue rotation only)', () => {
+      setItems([
+        makeItem({ id: 'due', rotationDueAt: Date.now() - 1000 }),
+        makeItem({ id: 'future', rotationDueAt: Date.now() + 100000 }),
+        makeItem({ id: 'none', rotationDueAt: 0 }),
+      ]);
+      useVaultStore.setState({ searchQuery: 'is:due' });
+      expect(ids()).toEqual(['due']);
     });
   });
 });

@@ -66,7 +66,7 @@ VaultNook é um cofre digital pessoal que permite ao usuário:
 | Excluir item | Confirmação com AlertDialog; toast com opção "Desfazer" por 5 segundos |
 | Copiar valor | Botão de cópia em cada card; duplo clique no card também copia |
 | Visualizar valor | Prévia truncada (60px); valores de API aparecem mascarados por padrão com botão de revelar |
-| Tags | Etiquetas livres por item (Enter ou vírgula para adicionar); filtro na sidebar e busca `tag:` |
+| Tags | Etiquetas livres por item (Enter ou vírgula para adicionar); o diálogo sugere tags já usadas e mostra chips das mais utilizadas; filtro na sidebar e busca `tag:` |
 | Menu de contexto | Clique direito no item abre menu: Copiar valor, Copiar nome, Copiar como JSON, Mover categoria/projeto, Editar, Excluir |
 | Gerador de senhas | Ícone de dado ao lado do campo "Valor" na categoria APIs — gera senha forte aleatória |
 | Favoritar item | Estrela no card permite marcar/desmarcar como favorito |
@@ -240,7 +240,19 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 | Esc | Fechar diálogos / limpar seleção |
 | Delete | Excluir item(s) selecionado(s) |
 
-### 2.11 Segurança
+### 2.11 Rotação de credenciais
+
+Aplicável às categorias **APIs** e **Chaves**, permite agendar a rotação de cada credencial.
+
+| Funcionalidade | Descrição |
+|---------------|-----------|
+| Agendar rotação | "A cada N dias" (recorrência) ou "Em uma data" específica; opcional por item |
+| Link de rotação | Campo opcional com o link de onde rotacionar (ex.: dashboard do provedor); o botão "Onde rotacionar" abre no navegador |
+| Alerta | Badge âmbar "Rotacionar" no card quando a data chega; contador "Para rotacionar" na sidebar e busca `is:due` |
+| Marcar como rotacionada | Ação no painel de detalhe e no menu de contexto; com intervalo recalcula a próxima data, sem intervalo limpa o alerta |
+| Revisão inicial única | Ao abrir pela primeira vez um cofre de versão anterior, todas as APIs/Chaves existentes recebem o alerta uma única vez (marcador persistido impede repetição em versões futuras) |
+
+### 2.12 Segurança
 
 | Funcionalidade | Descrição |
 |---------------|-----------|
@@ -428,6 +440,7 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 
 | Data | Versão | Descrição |
 |------|--------|-----------|
+| 2026-10-13 | v5 | Rotação de credenciais (§2.11) com data/dias, link, alerta e revisão inicial única; sugestões de tags no diálogo (§2.2) |
 | 2026-10-13 | v4 | Sincronização com o estado atual do app: 6ª categoria (Chaves), navegação em sidebar, Projetos (pastas) em §2.6, busca ampliada (`tag:`, `proj:`, `is:fav`), criptografia por campo em todas as categorias e roadmap atualizado |
 | 2026-06-07 | v3 | Especificação revisada com melhorias de UX: favoritos, busca global, paleta de comandos, multi-select, biometria, frase de recuperação, autolock configurável, painel deslizante, animações, e reorganização de prioridades |
 | 2026-06-07 | v2 | Especificação consolidada de todos os recursos atuais e planejados |

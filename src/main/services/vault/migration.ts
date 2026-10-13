@@ -10,7 +10,7 @@ import {
 } from '../crypto';
 import { saveVault } from './storage';
 import { toVaultKey } from './key';
-import { vaultState, type LegacyVaultData, type StoredItem } from './state';
+import { seedRotationAlerts, vaultState, type LegacyVaultData, type StoredItem } from './state';
 import type { Category } from '../../../shared/schemas';
 
 export async function migrateToV3(parsed: LegacyVaultData, passwordKey: VaultKey, salt: Buffer): Promise<string> {
@@ -48,10 +48,12 @@ export async function migrateToV3(parsed: LegacyVaultData, passwordKey: VaultKey
     hint: parsed.hint ?? '',
     items,
     projects: [],
+    rotationSeeded: false,
     settings: parsed.settings ?? { autoLockTimer: 60 },
   };
   recoveryKey.zeroize();
   vaultState.key = masterKey;
+  seedRotationAlerts(vaultState.data!);
   await saveVault();
   return newPhrase;
 }

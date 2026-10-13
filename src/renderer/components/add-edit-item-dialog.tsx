@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { KeyRound, KeySquare, Dice5, Folder, X, Tag } from 'lucide-react';
+import { KeyRound, KeySquare, Dice5, Folder, RotateCw, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,17 @@ import { PasswordGeneratorDialog } from './password-generator-dialog';
 import type { Item, Category } from '../types';
 import { CategoryLabel, Category as CategoryEnum } from '../types';
 import { CategoryIcon } from './category-icon';
+import { TagInput } from './tag-input';
+import { cn, collectTagFrequency } from '../lib/utils';
+
+type RotationMode = 'none' | 'days' | 'date';
+
+function toDateInputValue(timestamp: number): string {
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
 
 interface AddEditItemDialogProps {
   open: boolean;
@@ -32,6 +43,8 @@ interface AddEditItemDialogProps {
 
 export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: AddEditItemDialogProps) {
   const projects = useVaultStore((state) => state.projects);
+  const items = useVaultStore((state) => state.items);
+  const tagFrequency = React.useMemo(() => collectTagFrequency(items), [items]);
   const [name, setName] = React.useState('');
   const [value, setValue] = React.useState('');
   const [publicKey, setPublicKey] = React.useState('');
@@ -39,7 +52,10 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
   const [category, setCategory] = React.useState<Category>('api');
   const [tags, setTags] = React.useState<string[]>([]);
   const [projectId, setProjectId] = React.useState('');
-  const [tagInput, setTagInput] = React.useState('');
+  const [rotationMode, setRotationMode] = React.useState<RotationMode>('none');
+  const [rotationDays, setRotationDays] = React.useState('');
+  const [rotationDate, setRotationDate] = React.useState('');
+  const [rotationUrl, setRotationUrl] = React.useState('');
   const [generatorOpen, setGeneratorOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -53,6 +69,20 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       setCategory(editItem.category);
       setTags(editItem.tags || []);
       setProjectId(editItem.projectId || '');
+      setRotationUrl(editItem.rotationUrl || '');
+      if (editItem.rotationDueAt > 0 && editItem.rotationIntervalDays > 0) {
+        setRotationMode('days');
+        setRotationDays(String(editItem.rotationIntervalDays));
+        setRotationDate('');
+      } else if (editItem.rotationDueAt > 0) {
+        setRotationMode('date');
+        setRotationDays('');
+        setRotationDate(toDateInputValue(editItem.rotationDueAt));
+      } else {
+        setRotationMode('none');
+        setRotationDays('');
+        setRotationDate('');
+      }
     } else {
       setName('');
       setValue('');
@@ -69,22 +99,13 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           ? activeProject
           : ''
       );
+      setRotationMode('none');
+      setRotationDays('');
+      setRotationDate('');
+      setRotationUrl('');
     }
-    setTagInput('');
     setError('');
   }, [editItem, open]);
-
-  const handleAddTag = () => {
-    const trimmed = tagInput.trim().toLowerCase().replace(/^#/, '');
-    if (trimmed && !tags.includes(trimmed)) {
-      setTags([...tags, trimmed]);
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +120,17 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       return;
     }
 
+    const days = Number(rotationDays);
+    const rotationIntervalDays = rotationMode === 'days' && days > 0 ? Math.floor(days) : 0;
+    const rotationDueAt =
+      rotationMode === 'days'
+        ? rotationIntervalDays > 0
+          ? Date.now() + rotationIntervalDays * 86400000
+          : 0
+        : rotationMode === 'date' && rotationDate
+          ? new Date(`${rotationDate}T00:00:00`).getTime()
+          : 0;
+
     setLoading(true);
     try {
       const api = window.vaultNookApi;
@@ -112,6 +144,9 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           category,
           tags,
           projectId,
+          rotationDueAt,
+          rotationIntervalDays,
+          rotationUrl: rotationUrl.trim(),
         });
       } else {
         await api.addItem({
@@ -122,6 +157,9 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           category,
           tags,
           projectId,
+          rotationDueAt,
+          rotationIntervalDays,
+          rotationUrl: rotationUrl.trim(),
         });
       }
       // Refresh items from main process
@@ -278,50 +316,71 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                 <Tag className="h-3.5 w-3.5 text-text-muted" />
                 Tags (opcional)
               </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="item-tags"
-                  placeholder="Ex: prod, client-a, dev (Enter para adicionar)"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ',') {
-                      e.preventDefault();
-                      handleAddTag();
-                    }
-                  }}
-                  className="flex-1 h-8 text-xs"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddTag}
-                  className="h-8 text-xs shrink-0"
-                >
-                  Adicionar
-                </Button>
-              </div>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1 rounded-md bg-surface-overlay border border-border-default px-2 py-0.5 text-xs text-text-secondary"
+              <TagInput tags={tags} onChange={setTags} frequency={tagFrequency} />
+            </div>
+
+            {/* Rotation (api/keypair only) */}
+            {(category === 'api' || category === 'keypair') && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <RotateCw className="h-3.5 w-3.5 text-text-muted" />
+                  Rotação (opcional)
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { value: 'none', label: 'Sem rotação' },
+                      { value: 'days', label: 'A cada dias' },
+                      { value: 'date', label: 'Em uma data' },
+                    ] as { value: RotationMode; label: string }[]
+                  ).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setRotationMode(option.value)}
+                      className={cn(
+                        'rounded-md border px-2 py-1.5 text-xs font-medium transition-all cursor-pointer',
+                        rotationMode === option.value
+                          ? 'border-brass bg-brass/10 text-brass'
+                          : 'border-border-default text-text-muted hover:border-text-muted'
+                      )}
                     >
-                      #{tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="text-text-muted hover:text-text-primary cursor-pointer"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
+                      {option.label}
+                    </button>
                   ))}
                 </div>
-              )}
-            </div>
+                {rotationMode === 'days' && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="30"
+                      value={rotationDays}
+                      onChange={(e) => setRotationDays(e.target.value)}
+                      className="h-8 w-24 text-xs"
+                    />
+                    <span className="text-xs text-text-muted">dias até a próxima rotação</span>
+                  </div>
+                )}
+                {rotationMode === 'date' && (
+                  <Input
+                    type="date"
+                    value={rotationDate}
+                    onChange={(e) => setRotationDate(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                )}
+                {rotationMode !== 'none' && (
+                  <Input
+                    type="text"
+                    placeholder="Link para rotacionar (ex.: dashboard do provedor)"
+                    value={rotationUrl}
+                    onChange={(e) => setRotationUrl(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                )}
+              </div>
+            )}
 
             {/* Description */}
             <div className="space-y-2">

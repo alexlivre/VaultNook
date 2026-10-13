@@ -3,7 +3,7 @@ import { existsSync } from 'fs';
 import { readFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { atomicWriteFile } from '../fs-utils';
-import { lockVault, normalizeVaultData, vaultState } from './state';
+import { lockVault, normalizeVaultData, seedRotationAlerts, vaultState } from './state';
 
 export function getVaultPath(vaultId?: string): string {
   if (vaultId) {
@@ -24,7 +24,11 @@ export async function loadVault(vaultId: string): Promise<boolean> {
   if (!existsSync(path)) return false;
   vaultState.path = path;
   const raw = await readFile(path, 'utf-8');
-  vaultState.data = normalizeVaultData(JSON.parse(raw));
+  const data = normalizeVaultData(JSON.parse(raw));
+  vaultState.data = data;
+  if (seedRotationAlerts(data)) {
+    await saveVault();
+  }
   vaultState.activeVaultId = vaultId;
   vaultState.key?.zeroize();
   vaultState.key = null;

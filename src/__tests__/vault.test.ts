@@ -32,6 +32,9 @@ const makeItem = (overrides: Record<string, unknown> = {}) => ({
   category: 'api' as const,
   tags: [] as string[],
   projectId: '',
+  rotationDueAt: 0,
+  rotationIntervalDays: 0,
+  rotationUrl: '',
   favorite: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
@@ -434,6 +437,98 @@ describe('vault v3', () => {
 
       const items = await vault.getAllItems();
       expect(items.find((i) => i.id === 'i1')?.projectId).toBe(projects[0].id);
+    });
+  });
+
+  describe('rotation', () => {
+    it('should round-trip rotation fields with the URL encrypted at rest', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(
+        makeItem({
+          id: 'rot-1',
+          rotationDueAt: 123456789,
+          rotationIntervalDays: 30,
+          rotationUrl: 'https://dash.example.com/keys',
+        })
+      );
+
+      const raw = JSON.parse(readFileSync(singleVaultFile(), 'utf-8'));
+      const stored = raw.items[0];
+      expect(stored.rotationDueAt).toBe(123456789);
+      expect(stored.rotationIntervalDays).toBe(30);
+      expect(typeof stored.rotationUrl).toBe('object');
+      expect(stored.rotationUrl.ciphertext).toBeDefined();
+
+      const items = await vault.getAllItems();
+      expect(items[0].rotationDueAt).toBe(123456789);
+      expect(items[0].rotationIntervalDays).toBe(30);
+      expect(items[0].rotationUrl).toBe('https://dash.example.com/keys');
+    });
+
+    it('should seed rotation alerts once for vaults from previous versions', async () => {
+      const created = await vault.createVault('Password1!');
+      await vault.addItem(makeItem({ id: 'api-1', category: 'api' }));
+      await vault.addItem(makeItem({ id: 'link-1', category: 'link' }));
+
+      // Simula um cofre gravado por uma versão anterior (sem rotação)
+      const file = singleVaultFile();
+      const raw = JSON.parse(readFileSync(file, 'utf-8'));
+      delete raw.rotationSeeded;
+      for (const item of raw.items) {
+        delete item.rotationDueAt;
+        delete item.rotationIntervalDays;
+        delete item.rotationUrl;
+      }
+      writeFileSync(file, JSON.stringify(raw));
+
+      vault.lockVault();
+      expect(await vault.loadVault(created.vaultId)).toBe(true);
+      const unlock = await vault.unlockVault('Password1!');
+      expect(unlock.ok).toBe(true);
+
+      const items = await vault.getAllItems();
+      const api = items.find((i) => i.id === 'api-1');
+      const link = items.find((i) => i.id === 'link-1');
+      expect(api?.rotationDueAt).toBeGreaterThan(0);
+      expect(link?.rotationDueAt).toBe(0);
+
+      // Persistiu e não re-semeia ao reabrir
+      const seededAt = api?.rotationDueAt;
+      vault.lockVault();
+      expect(await vault.loadVault(created.vaultId)).toBe(true);
+      await vault.unlockVault('Password1!');
+      const again = await vault.getAllItems();
+      expect(again.find((i) => i.id === 'api-1')?.rotationDueAt).toBe(seededAt);
+    });
+
+    it('should not seed alerts for vaults created by the current version', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(makeItem({ id: 'api-1', category: 'api' }));
+      const items = await vault.getAllItems();
+      expect(items[0].rotationDueAt).toBe(0);
+    });
+
+    it('should preserve rotation through export and import', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(
+        makeItem({
+          id: 'rot-1',
+          rotationDueAt: 42,
+          rotationIntervalDays: 7,
+          rotationUrl: 'https://example.com',
+        })
+      );
+
+      const exported = await vault.exportVault();
+      await vault.removeItem('rot-1');
+      const result = await vault.importVault(exported);
+      expect(result.imported).toBe(1);
+
+      const items = await vault.getAllItems();
+      const restored = items.find((i) => i.id === 'rot-1');
+      expect(restored?.rotationDueAt).toBe(42);
+      expect(restored?.rotationIntervalDays).toBe(7);
+      expect(restored?.rotationUrl).toBe('https://example.com');
     });
   });
 

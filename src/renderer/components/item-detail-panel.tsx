@@ -11,16 +11,18 @@ import {
   ExternalLink,
   SlidersHorizontal,
   Maximize2,
+  RotateCw,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { cn, maskValue, getPasswordStrength, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
+import { cn, describeRotation, isRotationDue, maskValue, getPasswordStrength, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
 import type { Item, Project } from '../types';
 import { categoryMeta } from './category-icon';
 
 interface ItemDetailPanelProps {
   item: Item | null;
   projects?: Project[];
+  onMarkRotated?: (item: Item) => void;
   isRevealed: boolean;
   isCopied: boolean;
   onCopy: (value: string, itemId: string) => void;
@@ -37,6 +39,7 @@ interface ItemDetailPanelProps {
 export function ItemDetailPanel({
   item,
   projects,
+  onMarkRotated,
   isRevealed,
   isCopied,
   onCopy,
@@ -222,6 +225,33 @@ export function ItemDetailPanel({
           </>
         )}
 
+        {(item.rotationDueAt > 0 || item.rotationUrl) && (
+          <>
+            {item.rotationUrl && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 h-8 w-full text-xs"
+                onClick={() => onOpenExternal(item.rotationUrl)}
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                Onde rotacionar
+              </Button>
+            )}
+            {onMarkRotated && item.rotationDueAt > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 h-8 w-full text-xs text-warning"
+                onClick={() => onMarkRotated(item)}
+              >
+                <RotateCw className="h-3.5 w-3.5 mr-1.5" />
+                Marcar como rotacionada
+              </Button>
+            )}
+          </>
+        )}
+
         <p className="mb-1 mt-4 text-[10px] font-bold uppercase tracking-widest text-text-muted">
           Metadados
         </p>
@@ -235,6 +265,12 @@ export function ItemDetailPanel({
           <div className="flex justify-between border-b border-dashed border-border-default py-1.5">
             <span className="text-text-muted">Projeto</span>
             <span className="text-text-secondary">{projectName || '—'}</span>
+          </div>
+          <div className="flex justify-between border-b border-dashed border-border-default py-1.5">
+            <span className="text-text-muted">Rotação</span>
+            <span className={isRotationDue(item) ? 'text-warning' : 'text-text-secondary'}>
+              {describeRotation(item.rotationDueAt)}
+            </span>
           </div>
           <div className="flex justify-between border-b border-dashed border-border-default py-1.5">
             <span className="text-text-muted">Última rotação</span>

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Item, Category, Project, VaultEntry, SortOption } from '../types';
+import { isRotationDue } from '../lib/utils';
 
 export type AppScreen = 'loading' | 'vault-manager' | 'create-password' | 'unlock' | 'recovery' | 'vault';
 export type AutoLockOption = 30 | 60 | 300 | 900 | 0;
@@ -202,6 +203,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       let tagFilter: string | null = null;
       let projFilter: string | null = null;
       let onlyFavs = false;
+      let onlyDue = false;
 
       // Extract cat:<category>
       const catMatch = query.match(/cat:(\w+)/);
@@ -230,9 +232,16 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         query = query.replace(/is:fav(orite)?/, '').trim();
       }
 
+      // Extract is:due (itens com rotação vencida)
+      if (query.includes('is:due')) {
+        onlyDue = true;
+        query = query.replace(/is:due/, '').trim();
+      }
+
       filtered = filtered.filter((item) => {
         if (catFilter && item.category !== catFilter) return false;
         if (onlyFavs && !item.favorite) return false;
+        if (onlyDue && !isRotationDue(item)) return false;
         if (tagFilter) {
           const hasTag = (item.tags || []).some((t) => t.toLowerCase().includes(tagFilter!));
           if (!hasTag) return false;

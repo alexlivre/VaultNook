@@ -43,9 +43,10 @@
 | **Projetos (pastas)** | Separe credenciais por projeto (nome + cor), filtre na sidebar e mova itens em lote |
 | **Cópia explícita** | Botão de copiar, menu de contexto ou `Enter` — clique no card não copia |
 | **Favoritos** | Marque itens importantes e filtre por estes |
-| **Tags** | Etiquete itens e filtre pela sidebar ou por `tag:prod` |
+| **Tags** | Etiquete itens e filtre pela sidebar ou por `tag:prod`; o diálogo sugere tags já usadas |
+| **Rotação de credenciais** | Agende por dias ou data, com alerta quando vence e link de onde rotacionar |
 | **Busca global** | Pesquise em todas as categorias de uma vez |
-| **Busca por sintaxe** | `cat:api`, `tag:prod`, `proj:cliente` e `is:fav` para filtrar |
+| **Busca por sintaxe** | `cat:api`, `tag:prod`, `proj:cliente`, `is:fav` e `is:due` para filtrar |
 | **Gerador de senhas** | Crie senhas fortes diretamente no app |
 | **Multi-select** | Selecione vários itens para ações em lote |
 | **Valores mascarados** | APIs e chaves privadas aparecem ocultas por padrão — revele quando precisar |
@@ -195,7 +196,8 @@ src/
 │   │   └── hooks.ts                 # Auto-lock, atalhos de teclado
 │   ├── components/
 │   │   ├── ui/                      # 13 componentes base (Radix/shadcn)
-│   │   ├── add-edit-item-dialog.tsx # CRUD com projeto, tags e gerador de senha
+│   │   ├── add-edit-item-dialog.tsx # CRUD com projeto, tags, rotação e gerador
+│   │   ├── tag-input.tsx            # Campo de tags com sugestões e chips
 │   │   ├── item-card.tsx            # Card com menu de contexto
 │   │   ├── item-detail-panel.tsx    # Painel de detalhe lateral
 │   │   ├── project-dialog.tsx       # Criar/editar projeto (pasta)
@@ -230,7 +232,7 @@ Senha mestra / Frase BIP39
 ```
 
 - **Chave-mestra de 256 bits** gerada aleatoriamente por cofre; criptografa nome, valor,
-  descrição, tags e **nomes de projetos** com AES-256-GCM (IV único por campo).
+  descrição, tags, links de rotação e **nomes de projetos** com AES-256-GCM (IV único por campo).
 - A chave-mestra é protegida por duas "cápsulas" (`masterKeyWrap` e `recoveryKeyWrap`):
   uma derivada da **senha mestra** e outra da **frase de recuperação BIP39** (12 palavras).
 - **Trocar a senha** apenas re-embrulha a chave-mestra — nada é re-criptografado.
@@ -251,10 +253,11 @@ Senha mestra / Frase BIP39
 - ✅ CRUD de itens com 6 categorias (incl. par de chaves público/privado)
 - ✅ Criptografia AES-256-GCM (todas categorias, formatVersion 3 com chave-mestra)
 - ✅ Comparação segura com timingSafeEqual
-- ✅ Busca global com sintaxe `cat:`, `tag:`, `proj:` e `is:fav`
+- ✅ Busca global com sintaxe `cat:`, `tag:`, `proj:`, `is:fav` e `is:due`
 - ✅ Projetos (pastas) para separar credenciais por projeto
 - ✅ Favoritos e multi-select
-- ✅ Tags e labels por item
+- ✅ Tags com sugestões das já usadas no diálogo
+- ✅ Rotação de credenciais (data/dias, alerta e link de rotação)
 - ✅ Export/Import JSON (backup completo)
 - ✅ Nome sugerido de backup com o cofre e a data
 - ✅ Migração automática de cofres antigos (v1/v2 → v3)
@@ -268,7 +271,7 @@ Senha mestra / Frase BIP39
 - ✅ Dica de senha
 - ✅ Botões de janela customizados
 - ✅ Error Boundary React
-- ✅ Testes automatizados (Vitest, 7 suítes / 77 testes)
+- ✅ Testes automatizados (Vitest, 7 suítes / 87 testes)
 
 ### v0.2.0 🔜
 - Categorias personalizáveis

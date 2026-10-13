@@ -9,6 +9,9 @@ export interface StoredItem {
   description: EncryptedData | null;
   tags?: EncryptedData | null;
   projectId?: string;
+  rotationDueAt?: number;
+  rotationIntervalDays?: number;
+  rotationUrl?: EncryptedData | null;
   category: Category;
   favorite: boolean;
   createdAt: number;
@@ -59,6 +62,7 @@ export interface VaultData {
   hint: string;
   items: StoredItem[];
   projects: StoredProject[];
+  rotationSeeded: boolean;
   settings: {
     autoLockTimer: number;
   };
@@ -68,10 +72,31 @@ export function normalizeVaultData(data: VaultData): VaultData {
   if (!Array.isArray(data.projects)) {
     data.projects = [];
   }
+  if (data.rotationSeeded !== true) {
+    data.rotationSeeded = false;
+  }
   if (Array.isArray(data.items)) {
-    data.items = data.items.map((item) => ({ ...item, projectId: item.projectId ?? '' }));
+    data.items = data.items.map((item) => ({
+      ...item,
+      projectId: item.projectId ?? '',
+      rotationDueAt: item.rotationDueAt ?? 0,
+      rotationIntervalDays: item.rotationIntervalDays ?? 0,
+      rotationUrl: item.rotationUrl ?? null,
+    }));
   }
   return data;
+}
+
+export function seedRotationAlerts(data: VaultData): boolean {
+  if (data.rotationSeeded) return false;
+  const now = Date.now();
+  for (const item of data.items) {
+    if ((item.category === 'api' || item.category === 'keypair') && !item.rotationDueAt) {
+      item.rotationDueAt = now;
+    }
+  }
+  data.rotationSeeded = true;
+  return true;
 }
 
 export const vaultState = {

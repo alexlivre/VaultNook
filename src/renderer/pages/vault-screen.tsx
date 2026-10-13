@@ -21,6 +21,7 @@ import {
   Inbox,
   MoreHorizontal,
   Pencil,
+  RotateCw,
 } from 'lucide-react';
 import { useVaultStore } from '../stores/vault-store';
 import { useToast } from '../components/toast-provider';
@@ -43,7 +44,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from '../components/ui/alert-dialog';
-import { cn } from '../lib/utils';
+import { cn, collectTagFrequency, isRotationDue } from '../lib/utils';
 import type { Category, Item, Project } from '../types';
 import { CategoryLabel, Category as CategoryEnum } from '../types';
 import { AddEditItemDialog } from '../components/add-edit-item-dialog';
@@ -81,6 +82,7 @@ interface VaultRowProps {
   onDuplicate: (item: Item) => void;
   onMoveCategory: (id: string, category: Category) => void;
   onMoveProject: (id: string, projectId: string) => void;
+  onMarkRotated: (item: Item) => void;
   projects: Project[];
   showProjectBadge: boolean;
   onToggleFavorite: (id: string, current: boolean) => void;
@@ -109,6 +111,7 @@ function VaultRow({
   onDuplicate,
   onMoveCategory,
   onMoveProject,
+  onMarkRotated,
   projects,
   showProjectBadge,
   onToggleFavorite,
@@ -141,6 +144,7 @@ function VaultRow({
         onDuplicate={onDuplicate}
         onMoveCategory={onMoveCategory}
         onMoveProject={onMoveProject}
+        onMarkRotated={onMarkRotated}
         projects={projects}
         showProjectBadge={showProjectBadge}
         onToggleFavorite={onToggleFavorite}
@@ -248,6 +252,11 @@ export function VaultScreen() {
 
   const favoritesCount = React.useMemo(() => items.filter((i) => i.favorite).length, [items]);
 
+  const rotationDueCount = React.useMemo(
+    () => items.filter((item) => isRotationDue(item)).length,
+    [items]
+  );
+
   const categoryCounts = React.useMemo(() => {
     const counts: Record<Category | 'all', number> = {
       all: items.length,
@@ -275,18 +284,10 @@ export function VaultScreen() {
     [projects]
   );
 
-  const topTags = React.useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of items) {
-      for (const tag of item.tags || []) {
-        counts.set(tag, (counts.get(tag) || 0) + 1);
-      }
-    }
-    return [...counts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([tag]) => tag);
-  }, [items]);
+  const topTags = React.useMemo(
+    () => collectTagFrequency(items).slice(0, 8).map((entry) => entry.tag),
+    [items]
+  );
 
   React.useEffect(() => {
     window.vaultNookApi
@@ -359,6 +360,9 @@ export function VaultScreen() {
           category: item.category,
           tags: item.tags || [],
           projectId: item.projectId || '',
+          rotationDueAt: item.rotationDueAt || 0,
+          rotationIntervalDays: item.rotationIntervalDays || 0,
+          rotationUrl: item.rotationUrl || '',
         });
         const updated = await api.getItems();
         useVaultStore.getState().setItems(updated);
@@ -450,6 +454,25 @@ export function VaultScreen() {
       toast({ title: 'Erro ao excluir projeto', variant: 'destructive' });
     }
   }, [deleteProjectTarget, toast]);
+
+  const handleMarkRotated = React.useCallback(
+    async (item: Item) => {
+      const dueAt =
+        item.rotationIntervalDays > 0 ? Date.now() + item.rotationIntervalDays * 86400000 : 0;
+      try {
+        const api = window.vaultNookApi;
+        const updated = await api.editItem({ ...item, rotationDueAt: dueAt });
+        useVaultStore.getState().updateItem(updated);
+        toast({
+          title: dueAt > 0 ? 'Rotação registrada' : 'Alerta de rotação limpo',
+          variant: 'success',
+        });
+      } catch {
+        toast({ title: 'Erro ao registrar rotação', variant: 'destructive' });
+      }
+    },
+    [toast]
+  );
 
   const handleBulkDelete = React.useCallback(async () => {
     const ids = Array.from(selectedItemIds);
@@ -844,6 +867,25 @@ export function VaultScreen() {
               </span>
             </button>
 
+            <button
+              onClick={() => {
+                setSearchQuery(searchQuery === 'is:due' ? '' : 'is:due');
+                handleActivity();
+              }}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors cursor-pointer text-left',
+                searchQuery === 'is:due'
+                  ? 'bg-surface-raised text-text-primary shadow-[inset_2px_0_0_var(--color-brass)]'
+                  : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
+              )}
+            >
+              <RotateCw className="h-3.5 w-3.5 shrink-0 text-warning" />
+              <span className="truncate">Para rotacionar</span>
+              <span className="ml-auto rounded-full border border-border-default bg-surface-base px-1.5 py-px text-[10px] tabular-nums text-text-muted">
+                {rotationDueCount}
+              </span>
+            </button>
+
             {topTags.length > 0 && (
               <>
                 <p className="px-2 pb-1 pt-3 text-[10px] font-bold uppercase tracking-widest text-text-muted">
@@ -1060,6 +1102,7 @@ export function VaultScreen() {
                   onDuplicate: handleDuplicate,
                   onMoveCategory: handleMoveCategory,
                   onMoveProject: handleMoveProject,
+                  onMarkRotated: handleMarkRotated,
                   projects,
                   showProjectBadge: activeProjectId === 'all',
                   onToggleFavorite: handleToggleFavorite,
@@ -1096,6 +1139,7 @@ export function VaultScreen() {
           <ItemDetailPanel
             item={detailItem}
             projects={projects}
+            onMarkRotated={handleMarkRotated}
             isRevealed={detailItem ? revealedItemIds.has(detailItem.id) : false}
             isCopied={detailItem ? copiedId === detailItem.id : false}
             onCopy={handleCopy}

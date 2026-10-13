@@ -28,6 +28,9 @@ export const ItemSchema = z.object({
   category: Category,
   tags: z.array(z.string()).default([]),
   projectId: z.string().default(''),
+  rotationDueAt: z.number().default(0),
+  rotationIntervalDays: z.number().default(0),
+  rotationUrl: z.string().default(''),
   favorite: z.boolean().default(false),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -43,6 +46,9 @@ export const CreateItemSchema = z.object({
   category: Category,
   tags: z.array(z.string()).default([]),
   projectId: z.string().default(''),
+  rotationDueAt: z.number().default(0),
+  rotationIntervalDays: z.number().default(0),
+  rotationUrl: z.string().default(''),
 });
 export type CreateItem = z.infer<typeof CreateItemSchema>;
 
