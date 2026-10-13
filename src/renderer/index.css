@@ -65,6 +65,11 @@ body {
   -webkit-app-region: no-drag;
 }
 
+/* Overlays above the drag region (dialogs, sheets) must stay clickable */
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
 /* Shake animation for error feedback */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }

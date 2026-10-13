@@ -143,10 +143,10 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
-          className="fixed inset-0 z-50 bg-black/40"
+          className="no-drag fixed inset-0 z-50 bg-black/40"
           onClick={() => onOpenChange(false)}
         />
-        <DialogPrimitive.Content className="fixed right-0 top-0 z-50 h-full w-full max-w-sm border-l border-border-default bg-surface-raised shadow-xl">
+        <DialogPrimitive.Content className="no-drag fixed right-0 top-0 z-50 h-full w-full max-w-sm border-l border-border-default bg-surface-raised shadow-xl">
           <div className="flex h-full flex-col">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border-default px-4 h-12 shrink-0">
