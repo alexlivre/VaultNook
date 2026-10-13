@@ -7,7 +7,7 @@ import {
   ToggleFavoritePayloadSchema,
   SaveSettingsPayloadSchema,
 } from './shared/schemas';
-import type { Category, CreateItem, EditItem, ChangePassword, Item, VaultInfo, ImportResult, VaultEntry } from './shared/schemas';
+import type { Category, CreateItem, EditItem, ChangePassword, Item, Project, SaveProject, VaultInfo, ImportResult, VaultEntry } from './shared/schemas';
 
 export class IpcError extends Error {
   readonly code: string;
@@ -43,7 +43,7 @@ const api = {
     return invoke(IPC_CHANNELS.CREATE_PASSWORD, data);
   },
 
-  unlock: (password: string, vaultId: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string; recoveryPhrase?: string }> => {
+  unlock: (password: string, vaultId: string): Promise<{ items: Item[]; projects: Project[]; info: VaultInfo; vaultId: string; recoveryPhrase?: string }> => {
     const data = UnlockPayloadSchema.parse({ password, vaultId });
     return invoke(IPC_CHANNELS.UNLOCK, data);
   },
@@ -82,6 +82,18 @@ const api = {
 
   moveCategoryItems: (ids: string[], category: Category): Promise<boolean> =>
     invoke(IPC_CHANNELS.MOVE_CATEGORY_ITEMS, { ids, category }),
+
+  getProjects: (): Promise<Project[]> =>
+    invoke(IPC_CHANNELS.GET_PROJECTS),
+
+  saveProject: (data: SaveProject): Promise<Project> =>
+    invoke(IPC_CHANNELS.SAVE_PROJECT, data),
+
+  removeProject: (id: string): Promise<boolean> =>
+    invoke(IPC_CHANNELS.REMOVE_PROJECT, { id }),
+
+  moveProjectItems: (ids: string[], projectId: string): Promise<boolean> =>
+    invoke(IPC_CHANNELS.MOVE_PROJECT_ITEMS, { ids, projectId }),
 
   exportVault: (): Promise<boolean> =>
     invoke(IPC_CHANNELS.EXPORT),
@@ -123,7 +135,7 @@ const api = {
   clearClipboard: (expected?: string): Promise<boolean> =>
     invoke(IPC_CHANNELS.CLEAR_CLIPBOARD, { expected }),
 
-  recover: (vaultId: string, phrase: string, newPassword: string): Promise<{ items: Item[]; info: VaultInfo; vaultId: string }> =>
+  recover: (vaultId: string, phrase: string, newPassword: string): Promise<{ items: Item[]; projects: Project[]; info: VaultInfo; vaultId: string }> =>
     invoke(IPC_CHANNELS.RECOVER, { vaultId, phrase, newPassword }),
 
   saveRecoveryPhrase: (phrase: string): Promise<boolean> =>

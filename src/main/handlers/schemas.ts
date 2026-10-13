@@ -9,6 +9,7 @@ import {
   DeleteVaultEntryPayloadSchema,
   ToggleFavoritePayloadSchema,
   SaveSettingsPayloadSchema,
+  SaveProjectSchema,
 } from '../../shared/schemas';
 
 export {
@@ -21,6 +22,7 @@ export {
   DeleteVaultEntryPayloadSchema,
   ToggleFavoritePayloadSchema,
   SaveSettingsPayloadSchema,
+  SaveProjectSchema,
 };
 
 export const DeleteVaultSchema = z.object({
@@ -56,6 +58,15 @@ export const MoveCategorySchema = z.object({
   category: Category,
 });
 
+export const RemoveProjectSchema = z.object({
+  id: z.string().min(1),
+});
+
+export const MoveProjectSchema = z.object({
+  ids: z.array(z.string()),
+  projectId: z.string(),
+});
+
 export const IdsSchema = z.array(z.string());
 export const IdSchema = z.string().min(1);
 export const RawStringSchema = z.string();
@@ -74,7 +85,16 @@ const ImportedItemSchema = z.object({
   publicKey: z.union([z.string(), EncryptedFieldSchema]).nullish(),
   description: z.union([z.string(), EncryptedFieldSchema]).nullish(),
   tags: z.union([z.array(z.string()), EncryptedFieldSchema]).nullish(),
+  projectId: z.string().optional(),
   favorite: z.boolean().optional(),
+  createdAt: z.number().optional(),
+  updatedAt: z.number().optional(),
+});
+
+const ImportedProjectSchema = z.object({
+  id: z.string(),
+  name: EncryptedFieldSchema,
+  color: z.string().optional(),
   createdAt: z.number().optional(),
   updatedAt: z.number().optional(),
 });
@@ -90,5 +110,6 @@ export const ImportedVaultSchema = z.object({
   recoveryKeyWrap: EncryptedFieldSchema.optional(),
   hint: z.string().optional(),
   settings: z.object({ autoLockTimer: z.number() }).optional(),
+  projects: z.array(ImportedProjectSchema).optional(),
   items: z.array(ImportedItemSchema),
 });

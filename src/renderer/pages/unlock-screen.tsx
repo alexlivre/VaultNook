@@ -38,6 +38,7 @@ export function UnlockScreen({ vaultId, vaultName, vaultHint, onUnlocked, onBack
       const result = await api.unlock(password, vaultId);
       const settings = await api.getSettings();
       useVaultStore.getState().setItems(result.items);
+      useVaultStore.getState().setProjects(result.projects);
       useVaultStore.getState().setAutoLockTimer((settings.autoLockTimer ?? 60) as AutoLockOption);
       useVaultStore.getState().setActiveVaultId(result.vaultId);
       useVaultStore.getState().setActiveVaultName(vaultName);

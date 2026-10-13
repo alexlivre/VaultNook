@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { decrypt, encrypt } from '../crypto';
 import { saveVault } from './storage';
-import { vaultState, type StoredItem } from './state';
+import { vaultState, type StoredItem, type StoredProject } from './state';
 import type { Category } from '../../../shared/schemas';
 
 export async function exportVault(): Promise<string> {
@@ -18,6 +18,7 @@ export async function exportVault(): Promise<string> {
       masterKeyWrap: vaultState.data.masterKeyWrap,
       recoveryKeyWrap: vaultState.data.recoveryKeyWrap,
       settings: vaultState.data.settings,
+      projects: vaultState.data.projects,
       items: vaultState.data.items,
     },
     null,
@@ -34,6 +35,14 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
   }
 
   const existingIds = new Set(vaultState.data.items.map((i) => i.id));
+  const existingProjectIds = new Set(vaultState.data.projects.map((p) => p.id));
+  const incomingProjects: StoredProject[] = Array.isArray(data.projects) ? data.projects : [];
+  for (const project of incomingProjects) {
+    if (!project || typeof project.id !== 'string' || existingProjectIds.has(project.id)) continue;
+    vaultState.data.projects.push(project);
+    existingProjectIds.add(project.id);
+  }
+
   let imported = 0;
   let ignored = 0;
   const sourceFv = data.formatVersion || 1;
@@ -50,6 +59,9 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
       } catch {
         throw new Error('Backup de outro cofre: importe como novo cofre');
       }
+      const projectId = typeof item.projectId === 'string' && existingProjectIds.has(item.projectId)
+        ? item.projectId
+        : '';
       stored = {
         id: item.id,
         name: item.name,
@@ -57,6 +69,7 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
         publicKey: item.publicKey ?? null,
         description: item.description ?? null,
         tags: item.tags ?? null,
+        projectId,
         category: item.category,
         favorite: !!item.favorite,
         createdAt: item.createdAt ?? Date.now(),
@@ -75,6 +88,7 @@ export async function importVault(jsonData: string): Promise<{ imported: number;
         publicKey: rawPublicKey ? encrypt(rawPublicKey, key) : null,
         description: item.description ? encrypt(item.description, key) : null,
         tags: tagsEnc,
+        projectId: '',
         category: item.category as Category,
         favorite: !!item.favorite,
         createdAt: item.createdAt ?? Date.now(),

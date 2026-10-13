@@ -258,6 +258,7 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 
 | Funcionalidade | Descrição |
 |---------------|-----------|
+| Projetos (pastas) | Agrupar credenciais por projeto (nome + cor); filtro na sidebar, busca `proj:<nome>`, mover itens em lote e exclusão que realoca os itens para "Sem projeto" |
 | Tags/Labels | Adicionar tags personalizáveis aos itens para filtragem |
 | Categorias personalizáveis | Criar, renomear e excluir categorias |
 | Arrastar e soltar | Mover itens entre categorias por drag-and-drop |

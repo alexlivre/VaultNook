@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   Maximize2,
   CopyPlus,
+  Folder,
   FolderInput,
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -26,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { cn, maskValue, truncateValue, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
-import type { Item, Category } from '../types';
+import type { Item, Category, Project } from '../types';
 import { CategoryLabel, Category as CategoryEnum } from '../types';
 import { CategoryIcon, categoryMeta } from './category-icon';
 
@@ -42,6 +43,9 @@ interface ItemCardProps {
   onDelete: (id: string, name: string) => void;
   onDuplicate?: (item: Item) => void;
   onMoveCategory?: (id: string, category: Category) => void;
+  onMoveProject?: (id: string, projectId: string) => void;
+  projects?: Project[];
+  showProjectBadge?: boolean;
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
@@ -66,6 +70,9 @@ export function ItemCard({
   onDelete,
   onDuplicate,
   onMoveCategory,
+  onMoveProject,
+  projects,
+  showProjectBadge = false,
   onToggleFavorite,
   onToggleReveal,
   onSelect,
@@ -79,6 +86,9 @@ export function ItemCard({
 }: ItemCardProps) {
   const colorClass = categoryMeta[item.category].colorName;
   const showParams = item.category === 'command' && hasCommandParams(item.value);
+  const projectName = showProjectBadge
+    ? projects?.find((project) => project.id === item.projectId)?.name
+    : undefined;
   const [contextOpen, setContextOpen] = React.useState(false);
   const [contextPos, setContextPos] = React.useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [copiedField, setCopiedField] = React.useState<'value' | 'publicKey' | null>(null);
@@ -153,9 +163,15 @@ export function ItemCard({
             </span>
           </div>
 
-          {/* Tags Pills */}
-          {item.tags && item.tags.length > 0 && (
+          {/* Project badge + Tags Pills */}
+          {(projectName || (item.tags && item.tags.length > 0)) && (
             <div className="flex flex-wrap gap-1 mt-1">
+              {projectName && (
+                <span className="inline-flex items-center gap-1 font-secret text-[10px] text-text-muted bg-surface-overlay/80 border border-border-default/40 rounded px-1.5 py-0.2">
+                  <Folder className="h-2.5 w-2.5" />
+                  {projectName}
+                </span>
+              )}
               {item.tags.map((tag) => (
                 <button
                   key={tag}
@@ -465,6 +481,32 @@ export function ItemCard({
                     onClick={() => onMoveCategory(item.id, cat)}
                   >
                     {CategoryLabel[cat]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+
+          {onMoveProject && projects && projects.length > 0 && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Folder className="h-3.5 w-3.5 mr-2" />
+                Mover para projeto
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem
+                  disabled={!item.projectId}
+                  onClick={() => onMoveProject(item.id, '')}
+                >
+                  Sem projeto
+                </DropdownMenuItem>
+                {projects.map((project) => (
+                  <DropdownMenuItem
+                    key={project.id}
+                    disabled={project.id === item.projectId}
+                    onClick={() => onMoveProject(item.id, project.id)}
+                  >
+                    {project.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>

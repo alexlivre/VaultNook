@@ -14,10 +14,11 @@ import { restrictPathAclOnce } from './fs-utils';
 import { getVaultPath, getVaultsDir, saveVault } from './vault/storage';
 import { toVaultKey, unwrapMasterKey } from './vault/key';
 import { migrateToV3 } from './vault/migration';
-import { vaultState } from './vault/state';
+import { normalizeVaultData, vaultState } from './vault/state';
 import type { ChangePassword } from '../../shared/schemas';
 
 export { hasItem, getAllItems, addItem, editItem, removeItem, removeItems, moveCategoryItems } from './vault/items';
+export { getAllProjects, saveProject, removeProject, moveProjectItems } from './vault/projects';
 export { loadVault, deleteVault, exportVaultRaw, getVaultMetadata } from './vault/storage';
 export { exportVault, importVault } from './vault/backup';
 export { lockVault, getActiveVaultId } from './vault/state';
@@ -60,6 +61,7 @@ export async function createVault(password: string, hint: string = ''): Promise<
     recoveryKeyWrap,
     hint,
     items: [],
+    projects: [],
     settings: { autoLockTimer: 60 },
   };
   vaultState.key = masterKey;
@@ -87,7 +89,7 @@ export async function unlockVault(password: string): Promise<{ ok: boolean; reco
   if (fv < 3) {
     migratedPhrase = await migrateToV3(parsed, passwordKey, salt);
   } else {
-    vaultState.data = parsed;
+    vaultState.data = normalizeVaultData(parsed);
     vaultState.key = unwrapMasterKey(parsed, passwordKey);
   }
   passwordKey.zeroize();
@@ -166,7 +168,7 @@ export async function recoverVault(vaultId: string, phrase: string, newPassword:
   recoveryKey.zeroize();
 
   vaultState.key?.zeroize();
-  const data = parsed;
+  const data = normalizeVaultData(parsed);
   vaultState.data = data;
   vaultState.key = toVaultKey(master);
   vaultState.activeVaultId = vaultId;

@@ -18,10 +18,13 @@ import {
   IdsSchema,
   ImportedVaultSchema,
   MoveCategorySchema,
+  MoveProjectSchema,
   RawStringSchema,
   RecoverSchema,
   RegeneratePhraseSchema,
+  RemoveProjectSchema,
   RenameVaultSchema,
+  SaveProjectSchema,
   SaveRecoveryPhraseSchema,
   SaveSettingsPayloadSchema,
   ToggleFavoritePayloadSchema,
@@ -98,6 +101,7 @@ export function registerIpcHandlers(): void {
     await registry.updateVault(vaultId, { lastOpened: Date.now() });
     return {
       items: await vault.getAllItems(),
+      projects: await vault.getAllProjects(),
       info: await vault.getVaultInfo(),
       vaultId,
       recoveryPhrase: result.recoveryPhrase,
@@ -111,6 +115,7 @@ export function registerIpcHandlers(): void {
     await registry.updateVault(vaultId, { lastOpened: Date.now() });
     return {
       items: await vault.getAllItems(),
+      projects: await vault.getAllProjects(),
       info: await vault.getVaultInfo(),
       vaultId,
     };
@@ -322,6 +327,27 @@ export function registerIpcHandlers(): void {
   handle(IPC_CHANNELS.MOVE_CATEGORY_ITEMS, async (_event, data: unknown) => {
     const { ids, category } = validate(MoveCategorySchema, data);
     await vault.moveCategoryItems(ids, category);
+    return true;
+  });
+
+  handle(IPC_CHANNELS.GET_PROJECTS, async () => {
+    return vault.getAllProjects();
+  });
+
+  handle(IPC_CHANNELS.SAVE_PROJECT, async (_event, data: unknown) => {
+    const validated = validate(SaveProjectSchema, data);
+    return vault.saveProject(validated);
+  });
+
+  handle(IPC_CHANNELS.REMOVE_PROJECT, async (_event, data: unknown) => {
+    const { id } = validate(RemoveProjectSchema, data);
+    await vault.removeProject(id);
+    return true;
+  });
+
+  handle(IPC_CHANNELS.MOVE_PROJECT_ITEMS, async (_event, data: unknown) => {
+    const { ids, projectId } = validate(MoveProjectSchema, data);
+    await vault.moveProjectItems(ids, projectId);
     return true;
   });
 

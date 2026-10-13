@@ -33,6 +33,7 @@ export function RecoveryScreen({ vaultId, vaultName, onRecovered, onBack }: Reco
       const result = await api.recover(vaultId, phrase, newPassword);
       const store = useVaultStore.getState();
       store.setItems(result.items);
+      store.setProjects(result.projects);
       store.setActiveVaultId(result.vaultId);
       store.setActiveVaultName(vaultName);
       store.setIsLocked(false);

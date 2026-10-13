@@ -15,7 +15,12 @@ import {
   Copy,
   Star,
   Trash2,
+  Folder,
   FolderInput,
+  FolderPlus,
+  Inbox,
+  MoreHorizontal,
+  Pencil,
 } from 'lucide-react';
 import { useVaultStore } from '../stores/vault-store';
 import { useToast } from '../components/toast-provider';
@@ -39,7 +44,7 @@ import {
   AlertDialogAction,
 } from '../components/ui/alert-dialog';
 import { cn } from '../lib/utils';
-import type { Category, Item } from '../types';
+import type { Category, Item, Project } from '../types';
 import { CategoryLabel, Category as CategoryEnum } from '../types';
 import { AddEditItemDialog } from '../components/add-edit-item-dialog';
 import { VaultSettingsSheet } from '../components/vault-settings-sheet';
@@ -52,6 +57,7 @@ import { PromptViewDialog } from '../components/prompt-view-dialog';
 import { VaultAuditDialog } from '../components/vault-audit-dialog';
 import { ItemDetailPanel } from '../components/item-detail-panel';
 import { DeleteConfirmDialog } from '../components/delete-confirm-dialog';
+import { ProjectDialog } from '../components/project-dialog';
 import { List } from 'react-window';
 
 const tabs: { id: Category | 'all'; label: string; icon: React.ElementType; color: string }[] = [
@@ -74,6 +80,9 @@ interface VaultRowProps {
   onDelete: (id: string, name: string) => void;
   onDuplicate: (item: Item) => void;
   onMoveCategory: (id: string, category: Category) => void;
+  onMoveProject: (id: string, projectId: string) => void;
+  projects: Project[];
+  showProjectBadge: boolean;
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
@@ -99,6 +108,9 @@ function VaultRow({
   onDelete,
   onDuplicate,
   onMoveCategory,
+  onMoveProject,
+  projects,
+  showProjectBadge,
   onToggleFavorite,
   onToggleReveal,
   onSelect,
@@ -128,6 +140,9 @@ function VaultRow({
         onDelete={onDelete}
         onDuplicate={onDuplicate}
         onMoveCategory={onMoveCategory}
+        onMoveProject={onMoveProject}
+        projects={projects}
+        showProjectBadge={showProjectBadge}
         onToggleFavorite={onToggleFavorite}
         onToggleReveal={onToggleReveal}
         onSelect={onSelect}
@@ -164,6 +179,10 @@ export function VaultScreen() {
     removeItem,
     removeItems,
     moveCategoryItems,
+    projects,
+    activeProjectId,
+    setActiveProject,
+    moveProjectItems,
     filteredItems,
     setScreen,
     setIsLocked,
@@ -184,6 +203,9 @@ export function VaultScreen() {
   const [detailSelectedId, setDetailSelectedId] = React.useState<string | null>(null);
   const [autoLockTimer, setAutoLockTimer] = React.useState(60);
   const [deleteTarget, setDeleteTarget] = React.useState<Item | null>(null);
+  const [projectDialogOpen, setProjectDialogOpen] = React.useState(false);
+  const [editProject, setEditProject] = React.useState<Project | null>(null);
+  const [deleteProjectTarget, setDeleteProjectTarget] = React.useState<Project | null>(null);
 
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -207,7 +229,7 @@ export function VaultScreen() {
 
   const displayItems = React.useMemo(
     () => filteredItems(),
-    [items, activeCategory, searchQuery, favoritesFirst, sortOption]
+    [items, projects, activeProjectId, activeCategory, searchQuery, favoritesFirst, sortOption]
   );
 
   React.useEffect(() => {
@@ -238,6 +260,20 @@ export function VaultScreen() {
     for (const item of items) counts[item.category] += 1;
     return counts;
   }, [items]);
+
+  const projectCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { none: 0 };
+    for (const item of items) {
+      const key = item.projectId || 'none';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [items]);
+
+  const projectNames = React.useMemo(
+    () => new Map(projects.map((project) => [project.id, project.name])),
+    [projects]
+  );
 
   const topTags = React.useMemo(() => {
     const counts = new Map<string, number>();
@@ -322,6 +358,7 @@ export function VaultScreen() {
           description: item.description,
           category: item.category,
           tags: item.tags || [],
+          projectId: item.projectId || '',
         });
         const updated = await api.getItems();
         useVaultStore.getState().setItems(updated);
@@ -362,6 +399,57 @@ export function VaultScreen() {
     },
     [selectedItemIds, moveCategoryItems, toast]
   );
+
+  const handleMoveProject = React.useCallback(
+    async (id: string, projectId: string) => {
+      try {
+        const api = window.vaultNookApi;
+        await api.moveProjectItems([id], projectId);
+        moveProjectItems([id], projectId);
+        const label = projectId ? projectNames.get(projectId) ?? 'projeto' : 'Sem projeto';
+        toast({ title: `Movido para ${label}`, variant: 'success' });
+      } catch {
+        toast({ title: 'Erro ao mover item', variant: 'destructive' });
+      }
+    },
+    [moveProjectItems, projectNames, toast]
+  );
+
+  const handleBulkMoveProject = React.useCallback(
+    async (projectId: string) => {
+      const ids = Array.from(selectedItemIds);
+      if (ids.length === 0) return;
+      try {
+        const api = window.vaultNookApi;
+        await api.moveProjectItems(ids, projectId);
+        moveProjectItems(ids, projectId);
+        const label = projectId ? projectNames.get(projectId) ?? 'projeto' : 'Sem projeto';
+        toast({ title: `${ids.length} itens movidos para ${label}`, variant: 'success' });
+      } catch {
+        toast({ title: 'Erro ao mover itens em lote', variant: 'destructive' });
+      }
+    },
+    [selectedItemIds, moveProjectItems, projectNames, toast]
+  );
+
+  const handleDeleteProject = React.useCallback(async () => {
+    if (!deleteProjectTarget) return;
+    try {
+      const api = window.vaultNookApi;
+      await api.removeProject(deleteProjectTarget.id);
+      const [updatedItems, updatedProjects] = await Promise.all([api.getItems(), api.getProjects()]);
+      useVaultStore.getState().setItems(updatedItems);
+      useVaultStore.getState().setProjects(updatedProjects);
+      setDeleteProjectTarget(null);
+      toast({
+        title: `Projeto "${deleteProjectTarget.name}" excluído`,
+        description: 'Os itens foram movidos para "Sem projeto"',
+        variant: 'default',
+      });
+    } catch {
+      toast({ title: 'Erro ao excluir projeto', variant: 'destructive' });
+    }
+  }, [deleteProjectTarget, toast]);
 
   const handleBulkDelete = React.useCallback(async () => {
     const ids = Array.from(selectedItemIds);
@@ -591,7 +679,122 @@ export function VaultScreen() {
               </span>
             </button>
 
-            <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+            <div className="flex items-center justify-between px-2 pb-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                Projetos
+              </p>
+              <button
+                onClick={() => {
+                  setEditProject(null);
+                  setProjectDialogOpen(true);
+                  handleActivity();
+                }}
+                className="text-text-muted hover:text-brass cursor-pointer"
+                title="Novo projeto"
+              >
+                <FolderPlus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <button
+              onClick={() => {
+                setActiveProject('all');
+                handleActivity();
+              }}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors cursor-pointer text-left',
+                activeProjectId === 'all'
+                  ? 'bg-surface-raised text-text-primary shadow-[inset_2px_0_0_var(--color-brass)]'
+                  : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
+              )}
+            >
+              <Folder className="h-3.5 w-3.5 shrink-0 text-brass" />
+              <span className="truncate">Todos os projetos</span>
+              <span className="ml-auto rounded-full border border-border-default bg-surface-base px-1.5 py-px text-[10px] tabular-nums text-text-muted">
+                {projects.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveProject('none');
+                handleActivity();
+              }}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors cursor-pointer text-left',
+                activeProjectId === 'none'
+                  ? 'bg-surface-raised text-text-primary shadow-[inset_2px_0_0_var(--color-brass)]'
+                  : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
+              )}
+            >
+              <Inbox className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+              <span className="truncate">Sem projeto</span>
+              <span className="ml-auto rounded-full border border-border-default bg-surface-base px-1.5 py-px text-[10px] tabular-nums text-text-muted">
+                {projectCounts.none || 0}
+              </span>
+            </button>
+
+            {projects.map((project) => {
+              const isActive = activeProjectId === project.id;
+              return (
+                <div
+                  key={project.id}
+                  className={cn(
+                    'group flex items-center rounded-lg transition-colors',
+                    isActive
+                      ? 'bg-surface-raised text-text-primary shadow-[inset_2px_0_0_var(--color-brass)]'
+                      : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
+                  )}
+                >
+                  <button
+                    onClick={() => {
+                      setActiveProject(project.id);
+                      handleActivity();
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-2 py-2 pl-2.5 pr-1 text-[13px] font-medium text-left cursor-pointer"
+                  >
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: project.color || 'var(--color-brass)' }}
+                    />
+                    <span className="truncate">{project.name}</span>
+                    <span className="ml-auto rounded-full border border-border-default bg-surface-base px-1.5 py-px text-[10px] tabular-nums text-text-muted">
+                      {projectCounts[project.id] || 0}
+                    </span>
+                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="mr-1 shrink-0 rounded p-1 text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100 cursor-pointer"
+                        title="Opções do projeto"
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditProject(project);
+                          setProjectDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5 mr-2" />
+                        Editar projeto
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setDeleteProjectTarget(project)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                        Excluir projeto
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              );
+            })}
+
+            <p className="px-2 pb-1 pt-3 text-[10px] font-bold uppercase tracking-widest text-text-muted">
               Categorias
             </p>
             {tabs.map((tab) => {
@@ -747,6 +950,25 @@ export function VaultScreen() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 text-xs">
+                  <Folder className="h-3 w-3 mr-1" />
+                  Mover projeto
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleBulkMoveProject('')}>
+                  Sem projeto
+                </DropdownMenuItem>
+                {projects.map((project) => (
+                  <DropdownMenuItem key={project.id} onClick={() => handleBulkMoveProject(project.id)}>
+                    {project.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="ghost"
               size="sm"
@@ -784,6 +1006,8 @@ export function VaultScreen() {
                   ? `Nenhum resultado para "${searchQuery}"`
                   : items.length === 0
                   ? 'Seu cofre está vazio'
+                  : activeProjectId !== 'all'
+                  ? 'Nenhum item neste projeto'
                   : 'Nenhum item nesta categoria'}
               </p>
               <p className="text-xs text-text-muted mt-1">
@@ -791,6 +1015,8 @@ export function VaultScreen() {
                   ? 'Tente outro termo ou limpe a busca'
                   : items.length === 0
                   ? 'Adicione seu primeiro item'
+                  : activeProjectId !== 'all'
+                  ? 'Mova itens para este projeto ou troque o filtro'
                   : 'Tente outra categoria'}
               </p>
               {searchQuery && (
@@ -833,6 +1059,9 @@ export function VaultScreen() {
                   onDelete: requestDelete,
                   onDuplicate: handleDuplicate,
                   onMoveCategory: handleMoveCategory,
+                  onMoveProject: handleMoveProject,
+                  projects,
+                  showProjectBadge: activeProjectId === 'all',
                   onToggleFavorite: handleToggleFavorite,
                   onToggleReveal: toggleReveal,
                   onSelect: toggleItemSelection,
@@ -866,6 +1095,7 @@ export function VaultScreen() {
           {/* Item detail panel */}
           <ItemDetailPanel
             item={detailItem}
+            projects={projects}
             isRevealed={detailItem ? revealedItemIds.has(detailItem.id) : false}
             isCopied={detailItem ? copiedId === detailItem.id : false}
             onCopy={handleCopy}
@@ -964,12 +1194,48 @@ export function VaultScreen() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Project Dialog */}
+        <ProjectDialog
+          open={projectDialogOpen}
+          onOpenChange={(open) => {
+            setProjectDialogOpen(open);
+            if (!open) setEditProject(null);
+          }}
+          project={editProject}
+        />
+
+        {/* Delete Project Confirm */}
+        <AlertDialog
+          open={deleteProjectTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setDeleteProjectTarget(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Excluir projeto &quot;{deleteProjectTarget?.name}&quot;?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteProjectTarget
+                  ? `Os ${projectCounts[deleteProjectTarget.id] || 0} itens deste projeto serão movidos para "Sem projeto". Nenhum item é apagado.`
+                  : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteProject}>Excluir projeto</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Command Palette */}
         <CommandPalette
           isOpen={commandPaletteOpen}
           onClose={() => setCommandPaletteOpen(false)}
           commands={[
             { label: 'Adicionar item', shortcut: 'Ctrl+N', action: () => { setAddDialogOpen(true); } },
+            { label: 'Novo projeto', shortcut: '', action: () => { setEditProject(null); setProjectDialogOpen(true); } },
             { label: 'Auditoria de segurança', shortcut: '', action: () => { setAuditOpen(true); } },
             { label: 'Exportar vault', shortcut: 'Ctrl+E', action: async () => { const api = window.vaultNookApi; await api.exportVault(); } },
             { label: 'Travar vault', shortcut: 'Ctrl+L', action: () => { handleLock(); } },

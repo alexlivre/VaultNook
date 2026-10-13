@@ -48,7 +48,7 @@ export function VaultToolbar({
         <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
         <Input
           ref={searchInputRef}
-          placeholder="Buscar... (dica: cat:api, tag:prod, is:fav)"
+          placeholder="Buscar... (dica: cat:api, proj:cliente, tag:prod, is:fav)"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-8 pr-7 h-8 text-sm"

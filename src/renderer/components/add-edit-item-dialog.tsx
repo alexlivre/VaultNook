@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { KeyRound, KeySquare, Dice5, X, Tag } from 'lucide-react';
+import { KeyRound, KeySquare, Dice5, Folder, X, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,12 +31,14 @@ interface AddEditItemDialogProps {
 }
 
 export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: AddEditItemDialogProps) {
+  const projects = useVaultStore((state) => state.projects);
   const [name, setName] = React.useState('');
   const [value, setValue] = React.useState('');
   const [publicKey, setPublicKey] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [category, setCategory] = React.useState<Category>('api');
   const [tags, setTags] = React.useState<string[]>([]);
+  const [projectId, setProjectId] = React.useState('');
   const [tagInput, setTagInput] = React.useState('');
   const [generatorOpen, setGeneratorOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
@@ -50,6 +52,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       setDescription(editItem.description);
       setCategory(editItem.category);
       setTags(editItem.tags || []);
+      setProjectId(editItem.projectId || '');
     } else {
       setName('');
       setValue('');
@@ -57,6 +60,15 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       setDescription('');
       setCategory('api');
       setTags([]);
+      const store = useVaultStore.getState();
+      const activeProject = store.activeProjectId;
+      setProjectId(
+        activeProject !== 'all' &&
+          activeProject !== 'none' &&
+          store.projects.some((project) => project.id === activeProject)
+          ? activeProject
+          : ''
+      );
     }
     setTagInput('');
     setError('');
@@ -99,6 +111,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           description: description.trim(),
           category,
           tags,
+          projectId,
         });
       } else {
         await api.addItem({
@@ -108,6 +121,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           description: description.trim(),
           category,
           tags,
+          projectId,
         });
       }
       // Refresh items from main process
@@ -155,6 +169,43 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                       <span className="flex items-center gap-2">
                         <CategoryIcon category={cat} className="h-3.5 w-3.5" />
                         {CategoryLabel[cat]}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Project */}
+            <div className="space-y-2">
+              <Label>Projeto</Label>
+              <Select
+                value={projectId || 'none'}
+                onValueChange={(v) => setProjectId(v === 'none' ? '' : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    <span className="flex items-center gap-2">
+                      <Folder className="h-3.5 w-3.5 text-text-muted" />
+                      {projects.find((project) => project.id === projectId)?.name || 'Sem projeto'}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    <span className="flex items-center gap-2">
+                      <Folder className="h-3.5 w-3.5 text-text-muted" />
+                      Sem projeto
+                    </span>
+                  </SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: project.color || 'var(--color-brass)' }}
+                        />
+                        {project.name}
                       </span>
                     </SelectItem>
                   ))}

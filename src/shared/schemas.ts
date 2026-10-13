@@ -3,6 +3,22 @@ import { z } from 'zod';
 export const Category = z.enum(['api', 'prompt', 'command', 'link', 'keypair']);
 export type Category = z.infer<typeof Category>;
 
+export const ProjectSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, 'Nome é obrigatório').max(100),
+  color: z.string().default(''),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+});
+export type Project = z.infer<typeof ProjectSchema>;
+
+export const SaveProjectSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Nome é obrigatório').max(100),
+  color: z.string().optional(),
+});
+export type SaveProject = z.infer<typeof SaveProjectSchema>;
+
 export const ItemSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Nome é obrigatório'),
@@ -11,6 +27,7 @@ export const ItemSchema = z.object({
   description: z.string().default(''),
   category: Category,
   tags: z.array(z.string()).default([]),
+  projectId: z.string().default(''),
   favorite: z.boolean().default(false),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -25,6 +42,7 @@ export const CreateItemSchema = z.object({
   description: z.string().max(500).default(''),
   category: Category,
   tags: z.array(z.string()).default([]),
+  projectId: z.string().default(''),
 });
 export type CreateItem = z.infer<typeof CreateItemSchema>;
 

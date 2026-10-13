@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useVaultStore } from '../renderer/stores/vault-store';
-import type { Item, SortOption, Category } from '../renderer/types';
+import type { Item, Project, SortOption, Category } from '../renderer/types';
 
 const makeItem = (overrides: Partial<Item> = {}): Item => ({
   id: 'id',
@@ -10,7 +10,17 @@ const makeItem = (overrides: Partial<Item> = {}): Item => ({
   description: '',
   category: 'api',
   tags: [],
+  projectId: '',
   favorite: false,
+  createdAt: 1000,
+  updatedAt: 1000,
+  ...overrides,
+});
+
+const makeProject = (overrides: Partial<Project> = {}): Project => ({
+  id: 'project',
+  name: 'Projeto',
+  color: '',
   createdAt: 1000,
   updatedAt: 1000,
   ...overrides,
@@ -19,6 +29,8 @@ const makeItem = (overrides: Partial<Item> = {}): Item => ({
 interface StateOverrides {
   searchQuery?: string;
   activeCategory?: Category | 'all';
+  activeProjectId?: string;
+  projects?: Project[];
   favoritesFirst?: boolean;
   sortOption?: SortOption;
 }
@@ -26,6 +38,8 @@ interface StateOverrides {
 const setItems = (items: Item[], state: StateOverrides = {}) => {
   useVaultStore.setState({
     items,
+    projects: [],
+    activeProjectId: 'all',
     activeCategory: 'all',
     searchQuery: '',
     favoritesFirst: false,
@@ -40,10 +54,13 @@ describe('vault store filteredItems', () => {
   beforeEach(() => {
     useVaultStore.setState({
       items: [],
+      projects: [],
+      activeProjectId: 'all',
       activeCategory: 'all',
       searchQuery: '',
       favoritesFirst: false,
       sortOption: 'recent',
+      selectedItemIds: new Set(),
     });
   });
 
@@ -134,6 +151,69 @@ describe('vault store filteredItems', () => {
         activeCategory: 'link',
       });
       expect(ids()).toEqual(['l']);
+    });
+  });
+
+  describe('project filter', () => {
+    it('filters items by active project scope', () => {
+      setItems(
+        [makeItem({ id: 'a', projectId: 'p1' }), makeItem({ id: 'b', projectId: '' })],
+        { activeProjectId: 'p1' }
+      );
+      expect(ids()).toEqual(['a']);
+
+      useVaultStore.setState({ activeProjectId: 'none' });
+      expect(ids()).toEqual(['b']);
+
+      useVaultStore.setState({ activeProjectId: 'all' });
+      expect(ids().sort()).toEqual(['a', 'b']);
+    });
+
+    it('filters by proj: token matching the project name', () => {
+      setItems(
+        [
+          makeItem({ id: 'cf', projectId: 'p1' }),
+          makeItem({ id: 'gg', projectId: 'p2' }),
+          makeItem({ id: 'unassigned' }),
+        ],
+        {
+          searchQuery: 'proj:cloud',
+          projects: [
+            makeProject({ id: 'p1', name: 'Cloudflare' }),
+            makeProject({ id: 'p2', name: 'Google' }),
+          ],
+        }
+      );
+      expect(ids()).toEqual(['cf']);
+
+      useVaultStore.setState({ searchQuery: 'proj:none' });
+      expect(ids()).toEqual(['unassigned']);
+
+      useVaultStore.setState({ searchQuery: 'proj:unknown' });
+      expect(ids()).toEqual([]);
+    });
+
+    it('moveProjectItems updates items and clears selection', () => {
+      setItems([makeItem({ id: 'a' }), makeItem({ id: 'b' })], {
+        projects: [makeProject({ id: 'p1' })],
+      });
+      useVaultStore.setState({ selectedItemIds: new Set(['a']) });
+
+      useVaultStore.getState().moveProjectItems(['a'], 'p1');
+      const state = useVaultStore.getState();
+      expect(state.items.find((i) => i.id === 'a')?.projectId).toBe('p1');
+      expect(state.items.find((i) => i.id === 'b')?.projectId).toBe('');
+      expect(state.selectedItemIds.size).toBe(0);
+
+      useVaultStore.getState().moveProjectItems(['a'], 'unknown');
+      expect(useVaultStore.getState().items.find((i) => i.id === 'a')?.projectId).toBe('');
+    });
+
+    it('setActiveProject clears the search query', () => {
+      setItems([], { searchQuery: 'stripe' });
+      useVaultStore.getState().setActiveProject('none');
+      expect(useVaultStore.getState().searchQuery).toBe('');
+      expect(useVaultStore.getState().activeProjectId).toBe('none');
     });
   });
 });

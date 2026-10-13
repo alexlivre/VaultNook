@@ -31,6 +31,7 @@ const makeItem = (overrides: Record<string, unknown> = {}) => ({
   description: '',
   category: 'api' as const,
   tags: [] as string[],
+  projectId: '',
   favorite: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
@@ -313,6 +314,126 @@ describe('vault v3', () => {
       const items = await vault.getAllItems();
       expect(items.find((i) => i.id === 'kp-1')?.publicKey).toBe('PUB');
       expect(items.find((i) => i.id === 'kp-1')?.category).toBe('keypair');
+    });
+  });
+
+  describe('projects', () => {
+    it('should store project name encrypted and decrypt on getAllProjects', async () => {
+      await vault.createVault('Password1!');
+      const project = await vault.saveProject({ name: 'Cloudflare - Site X', color: '#3b82f6' });
+      expect(project.id).toBeDefined();
+
+      const raw = JSON.parse(readFileSync(singleVaultFile(), 'utf-8'));
+      expect(raw.projects).toHaveLength(1);
+      expect(typeof raw.projects[0].name).toBe('object');
+      expect(raw.projects[0].name.ciphertext).toBeDefined();
+      expect(raw.projects[0].color).toBe('#3b82f6');
+
+      const projects = await vault.getAllProjects();
+      expect(projects).toHaveLength(1);
+      expect(projects[0].name).toBe('Cloudflare - Site X');
+    });
+
+    it('should rename a project without touching its items', async () => {
+      await vault.createVault('Password1!');
+      const project = await vault.saveProject({ name: 'Projeto A' });
+      await vault.addItem(makeItem({ id: 'i1', projectId: project.id }));
+
+      const renamed = await vault.saveProject({ id: project.id, name: 'Projeto B', color: '#10b981' });
+      expect(renamed.id).toBe(project.id);
+      expect(renamed.name).toBe('Projeto B');
+
+      const projects = await vault.getAllProjects();
+      expect(projects).toHaveLength(1);
+      expect(projects[0].name).toBe('Projeto B');
+      expect(projects[0].color).toBe('#10b981');
+
+      const items = await vault.getAllItems();
+      expect(items[0].projectId).toBe(project.id);
+    });
+
+    it('should round-trip item projectId and default legacy items to empty', async () => {
+      await vault.createVault('Password1!');
+      const project = await vault.saveProject({ name: 'Projeto A' });
+      await vault.addItem(makeItem({ id: 'with-project', projectId: project.id }));
+      await vault.addItem(makeItem({ id: 'without-project' }));
+
+      const raw = JSON.parse(readFileSync(singleVaultFile(), 'utf-8'));
+      const stored = raw.items.find((i: { id: string }) => i.id === 'with-project');
+      expect(stored.projectId).toBe(project.id);
+
+      const items = await vault.getAllItems();
+      expect(items.find((i) => i.id === 'with-project')?.projectId).toBe(project.id);
+      expect(items.find((i) => i.id === 'without-project')?.projectId).toBe('');
+    });
+
+    it('should move items between projects and fall back to unassigned for unknown target', async () => {
+      await vault.createVault('Password1!');
+      const project = await vault.saveProject({ name: 'Projeto A' });
+      await vault.addItem(makeItem({ id: 'i1' }));
+      await vault.addItem(makeItem({ id: 'i2' }));
+
+      await vault.moveProjectItems(['i1', 'i2'], project.id);
+      let items = await vault.getAllItems();
+      expect(items.filter((i) => i.projectId === project.id)).toHaveLength(2);
+
+      await vault.moveProjectItems(['i1'], 'unknown-project');
+      items = await vault.getAllItems();
+      expect(items.find((i) => i.id === 'i1')?.projectId).toBe('');
+      expect(items.find((i) => i.id === 'i2')?.projectId).toBe(project.id);
+    });
+
+    it('should reassign items to unassigned when removing a project', async () => {
+      await vault.createVault('Password1!');
+      const project = await vault.saveProject({ name: 'Projeto A' });
+      await vault.addItem(makeItem({ id: 'i1', projectId: project.id }));
+
+      await vault.removeProject(project.id);
+
+      expect(await vault.getAllProjects()).toHaveLength(0);
+      const items = await vault.getAllItems();
+      expect(items[0].projectId).toBe('');
+    });
+
+    it('should load a legacy vault without projects field', async () => {
+      const created = await vault.createVault('Password1!');
+      await vault.addItem(makeItem({ id: 'legacy-item' }));
+
+      const file = singleVaultFile();
+      const raw = JSON.parse(readFileSync(file, 'utf-8'));
+      delete raw.projects;
+      delete raw.items[0].projectId;
+      writeFileSync(file, JSON.stringify(raw));
+
+      vault.lockVault();
+      expect(await vault.loadVault(created.vaultId)).toBe(true);
+      const unlock = await vault.unlockVault('Password1!');
+      expect(unlock.ok).toBe(true);
+
+      expect(await vault.getAllProjects()).toEqual([]);
+      const items = await vault.getAllItems();
+      expect(items[0].projectId).toBe('');
+    });
+
+    it('should preserve projects through export and import', async () => {
+      await vault.createVault('Password1!');
+      const project = await vault.saveProject({ name: 'Projeto A', color: '#10b981' });
+      await vault.addItem(makeItem({ id: 'i1', projectId: project.id }));
+
+      const exported = await vault.exportVault();
+      await vault.removeItem('i1');
+      await vault.removeProject(project.id);
+      expect(await vault.getAllProjects()).toHaveLength(0);
+
+      const result = await vault.importVault(exported);
+      expect(result.imported).toBe(1);
+
+      const projects = await vault.getAllProjects();
+      expect(projects).toHaveLength(1);
+      expect(projects[0].name).toBe('Projeto A');
+
+      const items = await vault.getAllItems();
+      expect(items.find((i) => i.id === 'i1')?.projectId).toBe(projects[0].id);
     });
   });
 

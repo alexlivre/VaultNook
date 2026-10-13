@@ -15,11 +15,12 @@ import {
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { cn, maskValue, getPasswordStrength, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
-import type { Item } from '../types';
+import type { Item, Project } from '../types';
 import { categoryMeta } from './category-icon';
 
 interface ItemDetailPanelProps {
   item: Item | null;
+  projects?: Project[];
   isRevealed: boolean;
   isCopied: boolean;
   onCopy: (value: string, itemId: string) => void;
@@ -35,6 +36,7 @@ interface ItemDetailPanelProps {
 
 export function ItemDetailPanel({
   item,
+  projects,
   isRevealed,
   isCopied,
   onCopy,
@@ -65,6 +67,9 @@ export function ItemDetailPanel({
   }
 
   const meta = categoryMeta[item.category];
+  const projectName = item.projectId
+    ? projects?.find((project) => project.id === item.projectId)?.name
+    : undefined;
   const showParams = item.category === 'command' && hasCommandParams(item.value);
   const isSecret = item.category === 'api' || item.category === 'keypair';
   const displayedValue = isSecret && !isRevealed ? maskValue(item.value) : item.value;
@@ -226,6 +231,10 @@ export function ItemDetailPanel({
             <span className="text-text-secondary">
               {new Date(item.createdAt).toLocaleDateString('pt-BR')}
             </span>
+          </div>
+          <div className="flex justify-between border-b border-dashed border-border-default py-1.5">
+            <span className="text-text-muted">Projeto</span>
+            <span className="text-text-secondary">{projectName || '—'}</span>
           </div>
           <div className="flex justify-between border-b border-dashed border-border-default py-1.5">
             <span className="text-text-muted">Última rotação</span>

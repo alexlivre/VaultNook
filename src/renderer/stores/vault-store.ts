@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import type { Item, Category, VaultEntry, SortOption } from '../types';
+import type { Item, Category, Project, VaultEntry, SortOption } from '../types';
 
 export type AppScreen = 'loading' | 'vault-manager' | 'create-password' | 'unlock' | 'recovery' | 'vault';
 export type AutoLockOption = 30 | 60 | 300 | 900 | 0;
+export type ProjectScope = 'all' | 'none' | (string & {});
 
 interface VaultState {
   // Auth
@@ -17,6 +18,8 @@ interface VaultState {
 
   // Data
   items: Item[];
+  projects: Project[];
+  activeProjectId: ProjectScope;
   activeCategory: Category | 'all';
   searchQuery: string;
   favoritesFirst: boolean;
@@ -38,11 +41,14 @@ interface VaultState {
   setActiveVaultName: (name: string) => void;
   setUnlockTarget: (target: { id: string; name: string; hint: string } | null) => void;
   setItems: (items: Item[]) => void;
+  setProjects: (projects: Project[]) => void;
   addItem: (item: Item) => void;
   updateItem: (item: Item) => void;
   removeItem: (id: string) => void;
   removeItems: (ids: string[]) => void;
   moveCategoryItems: (ids: string[], category: Category) => void;
+  setActiveProject: (projectId: ProjectScope) => void;
+  moveProjectItems: (ids: string[], projectId: string) => void;
   setActiveCategory: (category: Category | 'all') => void;
   setSearchQuery: (query: string) => void;
   setFavoritesFirst: (value: boolean) => void;
@@ -71,6 +77,8 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   // Data
   items: [],
+  projects: [],
+  activeProjectId: 'all',
   activeCategory: 'all',
   searchQuery: '',
   favoritesFirst: false,
@@ -92,6 +100,15 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   setActiveVaultName: (name) => set({ activeVaultName: name }),
   setUnlockTarget: (target) => set({ unlockTarget: target }),
   setItems: (items) => set({ items }),
+  setProjects: (projects) => set((state) => ({
+    projects,
+    activeProjectId:
+      state.activeProjectId !== 'all' &&
+      state.activeProjectId !== 'none' &&
+      !projects.some((project) => project.id === state.activeProjectId)
+        ? 'all'
+        : state.activeProjectId,
+  })),
   addItem: (item) => set((state) => ({ items: [...state.items, item] })),
   updateItem: (item) =>
     set((state) => ({
@@ -113,6 +130,16 @@ export const useVaultStore = create<VaultState>((set, get) => ({
     const idSet = new Set(ids);
     set((state) => ({
       items: state.items.map((i) => (idSet.has(i.id) ? { ...i, category, updatedAt: Date.now() } : i)),
+      selectedItemIds: new Set(),
+    }));
+  },
+  setActiveProject: (projectId) => set({ activeProjectId: projectId, searchQuery: '' }),
+  moveProjectItems: (ids, projectId) => {
+    const { projects } = get();
+    const target = projects.some((project) => project.id === projectId) ? projectId : '';
+    const idSet = new Set(ids);
+    set((state) => ({
+      items: state.items.map((i) => (idSet.has(i.id) ? { ...i, projectId: target, updatedAt: Date.now() } : i)),
       selectedItemIds: new Set(),
     }));
   },
@@ -156,8 +183,14 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   // Computed
   filteredItems: () => {
-    const { items, activeCategory, searchQuery, favoritesFirst, sortOption } = get();
+    const { items, projects, activeProjectId, activeCategory, searchQuery, favoritesFirst, sortOption } = get();
     let filtered = items;
+
+    if (activeProjectId !== 'all') {
+      filtered = filtered.filter((item) =>
+        activeProjectId === 'none' ? !item.projectId : item.projectId === activeProjectId
+      );
+    }
 
     if (activeCategory !== 'all') {
       filtered = filtered.filter((item) => item.category === activeCategory);
@@ -167,6 +200,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       let query = searchQuery.toLowerCase().trim();
       let catFilter: string | null = null;
       let tagFilter: string | null = null;
+      let projFilter: string | null = null;
       let onlyFavs = false;
 
       // Extract cat:<category>
@@ -183,6 +217,13 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         query = query.replace(/tag:[^\s]+/, '').trim();
       }
 
+      // Extract proj:<nome do projeto> (ou proj:none para itens sem projeto)
+      const projMatch = query.match(/proj:([^\s]+)/);
+      if (projMatch) {
+        projFilter = projMatch[1];
+        query = query.replace(/proj:[^\s]+/, '').trim();
+      }
+
       // Extract is:fav or is:favorite
       if (query.includes('is:fav') || query.includes('is:favorite')) {
         onlyFavs = true;
@@ -195,6 +236,14 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         if (tagFilter) {
           const hasTag = (item.tags || []).some((t) => t.toLowerCase().includes(tagFilter!));
           if (!hasTag) return false;
+        }
+        if (projFilter) {
+          if (projFilter === 'none') {
+            if (item.projectId) return false;
+          } else {
+            const project = projects.find((p) => p.name.toLowerCase().includes(projFilter!));
+            if (!project || item.projectId !== project.id) return false;
+          }
         }
         if (!query) return true;
 

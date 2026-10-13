@@ -40,10 +40,11 @@
 |---------------|-----------|
 | **CRUD completo** | Criar, editar e excluir itens |
 | **6 categorias** | APIs, Prompts, Commands, Links, Chaves (par público/privado) + visão "Todos" |
+| **Projetos (pastas)** | Separe credenciais por projeto (nome + cor), filtre na sidebar e mova itens em lote |
 | **Cópia explícita** | Botão de copiar, menu de contexto ou `Enter` — clique no card não copia |
 | **Favoritos** | Marque itens importantes e filtre por estes |
 | **Busca global** | Pesquise em todas as categorias de uma vez |
-| **Busca por sintaxe** | `cat:api stripe` para filtrar por categoria |
+| **Busca por sintaxe** | `cat:api stripe` para filtrar por categoria e `proj:cliente` por projeto |
 | **Gerador de senhas** | Crie senhas fortes diretamente no app |
 | **Multi-select** | Selecione vários itens para ações em lote |
 | **Valores mascarados** | APIs e chaves privadas aparecem ocultas por padrão — revele quando precisar |
@@ -243,6 +244,7 @@ Senha mestra / Frase BIP39
 - ✅ Criptografia AES-256-GCM (todas categorias, formatVersion 3 com chave-mestra)
 - ✅ Comparação segura com timingSafeEqual
 - ✅ Busca global com sintaxe `cat:`
+- ✅ Projetos (pastas) para separar credenciais por projeto
 - ✅ Favoritos e multi-select
 - ✅ Export/Import JSON (backup completo)
 - ✅ Auto-lock configurável

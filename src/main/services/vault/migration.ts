@@ -47,6 +47,7 @@ export async function migrateToV3(parsed: LegacyVaultData, passwordKey: VaultKey
     recoveryKeyWrap: encryptKey(masterKey.key, recoveryKey.key),
     hint: parsed.hint ?? '',
     items,
+    projects: [],
     settings: parsed.settings ?? { autoLockTimer: 60 },
   };
   recoveryKey.zeroize();

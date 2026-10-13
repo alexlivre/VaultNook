@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ImportedVaultSchema } from '../main/handlers/schemas';
+import { CreateItemSchema, ImportedVaultSchema } from '../main/handlers/schemas';
 
 const encrypted = { iv: 'aXY=', ciphertext: 'Y3Q=', tag: 'dGFn' };
 
@@ -46,5 +46,22 @@ describe('ImportedVaultSchema', () => {
   it('rejects items without a value', () => {
     const broken = { ...validV3, items: [{ id: '1', category: 'api' }] };
     expect(ImportedVaultSchema.safeParse(broken).success).toBe(false);
+  });
+
+  it('accepts a vault with projects and item projectId', () => {
+    const withProjects = {
+      ...validV3,
+      projects: [{ id: 'p1', name: encrypted, color: '#3b82f6', createdAt: 1, updatedAt: 1 }],
+      items: [{ ...validV3.items[0], projectId: 'p1' }],
+    };
+    expect(ImportedVaultSchema.safeParse(withProjects).success).toBe(true);
+  });
+});
+
+describe('CreateItemSchema', () => {
+  it('defaults projectId to empty string and tags to empty array', () => {
+    const parsed = CreateItemSchema.parse({ name: 'x', value: 'y', category: 'api' });
+    expect(parsed.projectId).toBe('');
+    expect(parsed.tags).toEqual([]);
   });
 });

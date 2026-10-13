@@ -8,8 +8,17 @@ export interface StoredItem {
   publicKey?: EncryptedData | null;
   description: EncryptedData | null;
   tags?: EncryptedData | null;
+  projectId?: string;
   category: Category;
   favorite: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface StoredProject {
+  id: string;
+  name: EncryptedData;
+  color: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -49,9 +58,20 @@ export interface VaultData {
   recoveryKeyWrap: EncryptedData;
   hint: string;
   items: StoredItem[];
+  projects: StoredProject[];
   settings: {
     autoLockTimer: number;
   };
+}
+
+export function normalizeVaultData(data: VaultData): VaultData {
+  if (!Array.isArray(data.projects)) {
+    data.projects = [];
+  }
+  if (Array.isArray(data.items)) {
+    data.items = data.items.map((item) => ({ ...item, projectId: item.projectId ?? '' }));
+  }
+  return data;
 }
 
 export const vaultState = {

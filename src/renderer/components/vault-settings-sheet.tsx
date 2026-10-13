@@ -65,9 +65,10 @@ export function VaultSettingsSheet({ open, onOpenChange, onLock }: VaultSettings
         title: `Importado: ${result.imported} itens, ${result.ignored} ignorados`,
         variant: 'success',
       });
-      // Refresh items
-      const items = await api.getItems();
+      // Refresh items and projects
+      const [items, projects] = await Promise.all([api.getItems(), api.getProjects()]);
       useVaultStore.getState().setItems(items);
+      useVaultStore.getState().setProjects(projects);
     }
   };
 
