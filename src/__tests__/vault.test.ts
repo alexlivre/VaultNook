@@ -35,6 +35,8 @@ const makeItem = (overrides: Record<string, unknown> = {}) => ({
   rotationDueAt: 0,
   rotationIntervalDays: 0,
   rotationUrl: '',
+  rotationLastAt: 0,
+  publicKeyHintDismissed: false,
   favorite: false,
   createdAt: Date.now(),
   updatedAt: Date.now(),
@@ -529,6 +531,92 @@ describe('vault v3', () => {
       expect(restored?.rotationDueAt).toBe(42);
       expect(restored?.rotationIntervalDays).toBe(7);
       expect(restored?.rotationUrl).toBe('https://example.com');
+    });
+
+    it('should round-trip rotationLastAt and publicKeyHintDismissed', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(
+        makeItem({ id: 'rot-2', rotationLastAt: 777, publicKeyHintDismissed: true })
+      );
+
+      const raw = JSON.parse(readFileSync(singleVaultFile(), 'utf-8'));
+      expect(raw.items[0].rotationLastAt).toBe(777);
+      expect(raw.items[0].publicKeyHintDismissed).toBe(true);
+
+      const items = await vault.getAllItems();
+      expect(items[0].rotationLastAt).toBe(777);
+      expect(items[0].publicKeyHintDismissed).toBe(true);
+    });
+
+    it('should keep the alert when editing only the description', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(makeItem({ id: 'api-1', rotationDueAt: 111, rotationLastAt: 0 }));
+
+      const existing = (await vault.getAllItems())[0];
+      const fullItem = { ...existing, description: 'nova descrição', updatedAt: Date.now() };
+      const rotation = vault.applyRotationOnEdit(existing, fullItem, Date.now());
+      fullItem.rotationDueAt = rotation.rotationDueAt;
+      fullItem.rotationLastAt = rotation.rotationLastAt;
+      await vault.editItem(fullItem);
+
+      const after = await vault.getAllItems();
+      expect(after[0].rotationDueAt).toBe(111);
+      expect(after[0].rotationLastAt).toBe(0);
+    });
+
+    it('should clear the alert and stamp rotationLastAt when the value changes', async () => {
+      await vault.createVault('Password1!');
+      await vault.addItem(makeItem({ id: 'api-1', rotationDueAt: 111, rotationLastAt: 0 }));
+
+      const existing = (await vault.getAllItems())[0];
+      const fullItem = { ...existing, value: 'sk_new_value' };
+      const now = Date.now();
+      const rotation = vault.applyRotationOnEdit(existing, fullItem, now);
+      fullItem.rotationDueAt = rotation.rotationDueAt;
+      fullItem.rotationLastAt = rotation.rotationLastAt;
+      await vault.editItem(fullItem);
+
+      const after = await vault.getAllItems();
+      expect(after[0].rotationDueAt).toBe(0);
+      expect(after[0].rotationLastAt).toBe(now);
+    });
+  });
+
+  describe('applyRotationOnEdit', () => {
+    const base = {
+      value: 'old',
+      rotationDueAt: 500,
+      rotationIntervalDays: 30,
+      rotationLastAt: 0,
+    };
+
+    it('reschedules from now when the value changes with an interval', () => {
+      const result = vault.applyRotationOnEdit(base, { ...base, value: 'new' }, 1000);
+      expect(result).toEqual({ rotationDueAt: 1000 + 30 * 86400000, rotationLastAt: 1000 });
+    });
+
+    it('clears the alert when the value changes without an interval', () => {
+      const existing = { ...base, rotationIntervalDays: 0 };
+      const result = vault.applyRotationOnEdit(existing, { ...existing, value: 'new' }, 1000);
+      expect(result).toEqual({ rotationDueAt: 0, rotationLastAt: 1000 });
+    });
+
+    it('respects a due date set by the user in the same save', () => {
+      const result = vault.applyRotationOnEdit(
+        base,
+        { ...base, value: 'new', rotationDueAt: 999 },
+        1000
+      );
+      expect(result).toEqual({ rotationDueAt: 999, rotationLastAt: 1000 });
+    });
+
+    it('passes fields through when the value is unchanged', () => {
+      const result = vault.applyRotationOnEdit(base, { ...base, rotationLastAt: 42 }, 1000);
+      expect(result).toEqual({ rotationDueAt: 500, rotationLastAt: 42 });
+      expect(vault.applyRotationOnEdit(null, { ...base, value: 'new' }, 1000)).toEqual({
+        rotationDueAt: 500,
+        rotationLastAt: 0,
+      });
     });
   });
 

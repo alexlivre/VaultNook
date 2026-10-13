@@ -12,6 +12,8 @@ export interface StoredItem {
   rotationDueAt?: number;
   rotationIntervalDays?: number;
   rotationUrl?: EncryptedData | null;
+  rotationLastAt?: number;
+  publicKeyHintDismissed?: boolean;
   category: Category;
   favorite: boolean;
   createdAt: number;
@@ -82,6 +84,8 @@ export function normalizeVaultData(data: VaultData): VaultData {
       rotationDueAt: item.rotationDueAt ?? 0,
       rotationIntervalDays: item.rotationIntervalDays ?? 0,
       rotationUrl: item.rotationUrl ?? null,
+      rotationLastAt: item.rotationLastAt ?? 0,
+      publicKeyHintDismissed: item.publicKeyHintDismissed ?? false,
     }));
   }
   return data;

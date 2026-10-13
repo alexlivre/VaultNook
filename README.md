@@ -44,7 +44,7 @@
 | **Cópia explícita** | Botão de copiar, menu de contexto ou `Enter` — clique no card não copia |
 | **Favoritos** | Marque itens importantes e filtre por estes |
 | **Tags** | Etiquete itens e filtre pela sidebar ou por `tag:prod`; o diálogo sugere tags já usadas |
-| **Rotação de credenciais** | Agende por dias ou data, com alerta quando vence e link de onde rotacionar |
+| **Rotação de credenciais** | Agende por dias ou data, com detecção automática ao trocar o valor, alerta com snooze (+3/+7), aviso da chave pública e link de onde rotacionar |
 | **Busca global** | Pesquise em todas as categorias de uma vez |
 | **Busca por sintaxe** | `cat:api`, `tag:prod`, `proj:cliente`, `is:fav` e `is:due` para filtrar |
 | **Gerador de senhas** | Crie senhas fortes diretamente no app |
@@ -257,7 +257,7 @@ Senha mestra / Frase BIP39
 - ✅ Projetos (pastas) para separar credenciais por projeto
 - ✅ Favoritos e multi-select
 - ✅ Tags com sugestões das já usadas no diálogo
-- ✅ Rotação de credenciais (data/dias, alerta e link de rotação)
+- ✅ Rotação de credenciais (data/dias, detecção automática, snooze e link)
 - ✅ Export/Import JSON (backup completo)
 - ✅ Nome sugerido de backup com o cofre e a data
 - ✅ Migração automática de cofres antigos (v1/v2 → v3)
@@ -271,7 +271,7 @@ Senha mestra / Frase BIP39
 - ✅ Dica de senha
 - ✅ Botões de janela customizados
 - ✅ Error Boundary React
-- ✅ Testes automatizados (Vitest, 7 suítes / 87 testes)
+- ✅ Testes automatizados (Vitest, 7 suítes / 97 testes)
 
 ### v0.2.0 🔜
 - Categorias personalizáveis

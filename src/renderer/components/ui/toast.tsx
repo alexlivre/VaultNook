@@ -42,12 +42,14 @@ interface ToastProps
   extends React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root>,
     VariantProps<typeof toastVariants> {
   onUndo?: () => void;
+  onAction?: () => void;
+  actionLabel?: string;
 }
 
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   ToastProps
->(({ className, variant, onUndo, children, ...props }, ref) => {
+>(({ className, variant, onUndo, onAction, actionLabel, children, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
       ref={ref}
@@ -56,12 +58,12 @@ const Toast = React.forwardRef<
     >
       <div className="flex items-center gap-3">
         <div className="text-sm">{children}</div>
-        {onUndo && (
+        {(onAction || onUndo) && (
           <button
-            onClick={onUndo}
+            onClick={onAction ?? onUndo}
             className="text-xs font-medium text-brass hover:underline cursor-pointer"
           >
-            Desfazer
+            {actionLabel ?? 'Desfazer'}
           </button>
         )}
       </div>

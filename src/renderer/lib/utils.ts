@@ -98,6 +98,58 @@ export function describeRotation(dueAt: number): string {
   return `vence em ${days} dia${days > 1 ? 's' : ''}`;
 }
 
+export type RotationUiMode = 'none' | 'days' | 'date';
+
+export function dateInputValue(timestamp: number): string {
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+export function resolveRotationDueAt(
+  editItem: Pick<Item, 'rotationDueAt' | 'rotationIntervalDays'> | null,
+  mode: RotationUiMode,
+  days: string,
+  date: string,
+  now: number = Date.now()
+): { rotationDueAt: number; rotationIntervalDays: number } {
+  const parsedDays = Number(days);
+  const intervalDays = mode === 'days' && parsedDays > 0 ? Math.floor(parsedDays) : 0;
+  const computed =
+    mode === 'days'
+      ? intervalDays > 0
+        ? now + intervalDays * DAY_MS
+        : 0
+      : mode === 'date' && date
+        ? new Date(`${date}T00:00:00`).getTime()
+        : 0;
+
+  if (editItem) {
+    const initialMode: RotationUiMode =
+      editItem.rotationDueAt > 0 && editItem.rotationIntervalDays > 0
+        ? 'days'
+        : editItem.rotationDueAt > 0
+          ? 'date'
+          : 'none';
+    const initialDays =
+      editItem.rotationIntervalDays > 0 ? String(editItem.rotationIntervalDays) : '';
+    const initialDate =
+      editItem.rotationDueAt > 0 && editItem.rotationIntervalDays <= 0
+        ? dateInputValue(editItem.rotationDueAt)
+        : '';
+
+    if (mode === initialMode && days === initialDays && date === initialDate) {
+      return {
+        rotationDueAt: editItem.rotationDueAt,
+        rotationIntervalDays: editItem.rotationIntervalDays,
+      };
+    }
+  }
+
+  return { rotationDueAt: computed, rotationIntervalDays: intervalDays };
+}
+
 export function maskValue(value: string): string {
   if (value.length <= 8) return '••••••••';
   return value.substring(0, 4) + '••••••••' + value.substring(value.length - 4);

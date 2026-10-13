@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   collectTagFrequency,
+  dateInputValue,
   describeRotation,
   filterTagSuggestions,
   generateCustomPassword,
@@ -8,6 +9,7 @@ import {
   calculateSecretAudit,
   isRotationDue,
   maskValue,
+  resolveRotationDueAt,
   truncateValue,
 } from '../renderer/lib/utils';
 import type { Item } from '../renderer/types';
@@ -71,6 +73,8 @@ describe('utils', () => {
           rotationDueAt: 0,
           rotationIntervalDays: 0,
           rotationUrl: '',
+          rotationLastAt: 0,
+          publicKeyHintDismissed: false,
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -87,6 +91,8 @@ describe('utils', () => {
           rotationDueAt: 0,
           rotationIntervalDays: 0,
           rotationUrl: '',
+          rotationLastAt: 0,
+          publicKeyHintDismissed: false,
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -103,6 +109,8 @@ describe('utils', () => {
           rotationDueAt: 0,
           rotationIntervalDays: 0,
           rotationUrl: '',
+          rotationLastAt: 0,
+          publicKeyHintDismissed: false,
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -119,6 +127,8 @@ describe('utils', () => {
           rotationDueAt: 0,
           rotationIntervalDays: 0,
           rotationUrl: '',
+          rotationLastAt: 0,
+          publicKeyHintDismissed: false,
           favorite: false,
           createdAt: twoHundredDaysAgo,
           updatedAt: twoHundredDaysAgo,
@@ -150,6 +160,8 @@ describe('utils', () => {
           rotationDueAt: 0,
           rotationIntervalDays: 0,
           rotationUrl: '',
+          rotationLastAt: 0,
+          publicKeyHintDismissed: false,
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -166,6 +178,8 @@ describe('utils', () => {
           rotationDueAt: 0,
           rotationIntervalDays: 0,
           rotationUrl: '',
+          rotationLastAt: 0,
+          publicKeyHintDismissed: false,
           favorite: false,
           createdAt: now,
           updatedAt: now,
@@ -232,6 +246,53 @@ describe('utils', () => {
       expect(describeRotation(0)).toBe('sem rotação');
       expect(describeRotation(Date.now() - 2 * 86400000 - 60000)).toBe('vencida há 2 dias');
       expect(describeRotation(Date.now() + 2.5 * 86400000)).toBe('vence em 3 dias');
+    });
+  });
+
+  describe('resolveRotationDueAt', () => {
+    it('computes for new items', () => {
+      const now = 1000;
+      expect(resolveRotationDueAt(null, 'days', '30', '', now)).toEqual({
+        rotationDueAt: now + 30 * 86400000,
+        rotationIntervalDays: 30,
+      });
+      expect(resolveRotationDueAt(null, 'date', '', '2030-01-02', now).rotationDueAt).toBe(
+        new Date('2030-01-02T00:00:00').getTime()
+      );
+      expect(resolveRotationDueAt(null, 'none', '', '', now)).toEqual({
+        rotationDueAt: 0,
+        rotationIntervalDays: 0,
+      });
+    });
+
+    it('keeps the existing date when the config is unchanged', () => {
+      const intervalItem = { rotationDueAt: 555, rotationIntervalDays: 30 };
+      expect(resolveRotationDueAt(intervalItem, 'days', '30', '', 1000)).toEqual({
+        rotationDueAt: 555,
+        rotationIntervalDays: 30,
+      });
+
+      const dateItem = { rotationDueAt: 777, rotationIntervalDays: 0 };
+      expect(
+        resolveRotationDueAt(dateItem, 'date', '', dateInputValue(777), 1000)
+      ).toEqual({ rotationDueAt: 777, rotationIntervalDays: 0 });
+
+      const noneItem = { rotationDueAt: 0, rotationIntervalDays: 0 };
+      expect(resolveRotationDueAt(noneItem, 'none', '', '', 1000)).toEqual({
+        rotationDueAt: 0,
+        rotationIntervalDays: 0,
+      });
+    });
+
+    it('recomputes when the config changes', () => {
+      const intervalItem = { rotationDueAt: 555, rotationIntervalDays: 30 };
+      expect(resolveRotationDueAt(intervalItem, 'none', '', '', 1000)).toEqual({
+        rotationDueAt: 0,
+        rotationIntervalDays: 0,
+      });
+      expect(resolveRotationDueAt(intervalItem, 'days', '60', '', 1000).rotationDueAt).toBe(
+        1000 + 60 * 86400000
+      );
     });
   });
 });

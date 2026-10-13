@@ -7,11 +7,14 @@ interface ToastItem {
   description?: string;
   variant?: 'default' | 'success' | 'destructive' | 'info';
   onUndo?: () => void;
+  onAction?: () => void;
+  actionLabel?: string;
+  duration?: number;
 }
 
 interface ToastContextType {
   toasts: ToastItem[];
-  toast: (props: Omit<ToastItem, 'id'> & { duration?: number }) => string;
+  toast: (props: Omit<ToastItem, 'id'>) => string;
   dismiss: (id: string) => void;
 }
 
@@ -26,11 +29,11 @@ export function useToast() {
 export function ToastContextProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<ToastItem[]>([]);
 
-  const toast = React.useCallback((props: Omit<ToastItem, 'id'> & { duration?: number }) => {
+  const toast = React.useCallback((props: Omit<ToastItem, 'id'>) => {
     const id = crypto.randomUUID();
     const duration = props.variant === 'destructive' ? 5000 : props.duration || 3000;
 
-    setToasts((prev) => [...prev, { ...props, id }]);
+    setToasts((prev) => [...prev, { ...props, id, duration }]);
 
     if (duration > 0) {
       setTimeout(() => {
@@ -54,10 +57,12 @@ export function ToastContextProvider({ children }: { children: React.ReactNode }
             key={t.id}
             variant={t.variant}
             onUndo={t.onUndo}
+            onAction={t.onAction}
+            actionLabel={t.actionLabel}
             onOpenChange={(open) => {
               if (!open) dismiss(t.id);
             }}
-            duration={3000}
+            duration={t.duration}
           >
             {t.title && <ToastTitle>{t.title}</ToastTitle>}
             {t.description && <ToastDescription>{t.description}</ToastDescription>}

@@ -189,6 +189,9 @@ export function registerIpcHandlers(): void {
     const fullItem = existing
       ? { ...existing, ...validated, updatedAt: Date.now() }
       : { ...validated, favorite: false, createdAt: Date.now(), updatedAt: Date.now() };
+    const rotation = vault.applyRotationOnEdit(existing ?? null, fullItem, Date.now());
+    fullItem.rotationDueAt = rotation.rotationDueAt;
+    fullItem.rotationLastAt = rotation.rotationLastAt;
     await vault.editItem(fullItem);
     return fullItem;
   });

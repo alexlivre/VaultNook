@@ -11,10 +11,17 @@ import {
   ExternalLink,
   SlidersHorizontal,
   Maximize2,
+  CalendarClock,
   RotateCw,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import { cn, describeRotation, isRotationDue, maskValue, getPasswordStrength, formatRelativeTime, hasCommandParams, itemToJson } from '../lib/utils';
 import type { Item, Project } from '../types';
 import { categoryMeta } from './category-icon';
@@ -23,6 +30,7 @@ interface ItemDetailPanelProps {
   item: Item | null;
   projects?: Project[];
   onMarkRotated?: (item: Item) => void;
+  onSnoozeRotation?: (item: Item, days: number) => void;
   isRevealed: boolean;
   isCopied: boolean;
   onCopy: (value: string, itemId: string) => void;
@@ -40,6 +48,7 @@ export function ItemDetailPanel({
   item,
   projects,
   onMarkRotated,
+  onSnoozeRotation,
   isRevealed,
   isCopied,
   onCopy,
@@ -78,7 +87,6 @@ export function ItemDetailPanel({
   const displayedValue = isSecret && !isRevealed ? maskValue(item.value) : item.value;
   const strength = item.category === 'api' ? getPasswordStrength(item.value) : null;
   const updatedTs = item.updatedAt || item.createdAt;
-  const isStale = Date.now() - updatedTs > 4320 * 60 * 60 * 1000;
 
   const handleCopyJson = () => {
     onCopy(itemToJson(item), item.id);
@@ -238,6 +246,24 @@ export function ItemDetailPanel({
                 Onde rotacionar
               </Button>
             )}
+            {onSnoozeRotation && isRotationDue(item) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="mt-2 h-8 w-full text-xs">
+                    <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
+                    Adiar rotação
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => onSnoozeRotation(item, 3)}>
+                    Adiar por 3 dias
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onSnoozeRotation(item, 7)}>
+                    Adiar por 7 dias
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {onMarkRotated && item.rotationDueAt > 0 && (
               <Button
                 variant="outline"
@@ -274,8 +300,8 @@ export function ItemDetailPanel({
           </div>
           <div className="flex justify-between border-b border-dashed border-border-default py-1.5">
             <span className="text-text-muted">Última rotação</span>
-            <span className={isStale ? 'text-warning' : 'text-text-secondary'}>
-              {formatRelativeTime(updatedTs)}
+            <span className="text-text-secondary">
+              {item.rotationLastAt > 0 ? formatRelativeTime(item.rotationLastAt) : '—'}
             </span>
           </div>
           {strength && (

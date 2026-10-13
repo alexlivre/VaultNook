@@ -81,5 +81,7 @@ describe('CreateItemSchema', () => {
     expect(parsed.rotationDueAt).toBe(0);
     expect(parsed.rotationIntervalDays).toBe(0);
     expect(parsed.rotationUrl).toBe('');
+    expect(parsed.rotationLastAt).toBe(0);
+    expect(parsed.publicKeyHintDismissed).toBe(false);
   });
 });

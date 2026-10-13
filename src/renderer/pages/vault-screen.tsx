@@ -83,6 +83,7 @@ interface VaultRowProps {
   onMoveCategory: (id: string, category: Category) => void;
   onMoveProject: (id: string, projectId: string) => void;
   onMarkRotated: (item: Item) => void;
+  onSnoozeRotation: (item: Item, days: number) => void;
   projects: Project[];
   showProjectBadge: boolean;
   onToggleFavorite: (id: string, current: boolean) => void;
@@ -112,6 +113,7 @@ function VaultRow({
   onMoveCategory,
   onMoveProject,
   onMarkRotated,
+  onSnoozeRotation,
   projects,
   showProjectBadge,
   onToggleFavorite,
@@ -145,6 +147,7 @@ function VaultRow({
         onMoveCategory={onMoveCategory}
         onMoveProject={onMoveProject}
         onMarkRotated={onMarkRotated}
+        onSnoozeRotation={onSnoozeRotation}
         projects={projects}
         showProjectBadge={showProjectBadge}
         onToggleFavorite={onToggleFavorite}
@@ -363,6 +366,8 @@ export function VaultScreen() {
           rotationDueAt: item.rotationDueAt || 0,
           rotationIntervalDays: item.rotationIntervalDays || 0,
           rotationUrl: item.rotationUrl || '',
+          rotationLastAt: item.rotationLastAt || 0,
+          publicKeyHintDismissed: item.publicKeyHintDismissed || false,
         });
         const updated = await api.getItems();
         useVaultStore.getState().setItems(updated);
@@ -461,7 +466,11 @@ export function VaultScreen() {
         item.rotationIntervalDays > 0 ? Date.now() + item.rotationIntervalDays * 86400000 : 0;
       try {
         const api = window.vaultNookApi;
-        const updated = await api.editItem({ ...item, rotationDueAt: dueAt });
+        const updated = await api.editItem({
+          ...item,
+          rotationDueAt: dueAt,
+          rotationLastAt: Date.now(),
+        });
         useVaultStore.getState().updateItem(updated);
         toast({
           title: dueAt > 0 ? 'Rotação registrada' : 'Alerta de rotação limpo',
@@ -469,6 +478,23 @@ export function VaultScreen() {
         });
       } catch {
         toast({ title: 'Erro ao registrar rotação', variant: 'destructive' });
+      }
+    },
+    [toast]
+  );
+
+  const handleSnoozeRotation = React.useCallback(
+    async (item: Item, days: number) => {
+      try {
+        const api = window.vaultNookApi;
+        const updated = await api.editItem({
+          ...item,
+          rotationDueAt: Date.now() + days * 86400000,
+        });
+        useVaultStore.getState().updateItem(updated);
+        toast({ title: `Rotação adiada por ${days} dias`, variant: 'success' });
+      } catch {
+        toast({ title: 'Erro ao adiar rotação', variant: 'destructive' });
       }
     },
     [toast]
@@ -1103,6 +1129,7 @@ export function VaultScreen() {
                   onMoveCategory: handleMoveCategory,
                   onMoveProject: handleMoveProject,
                   onMarkRotated: handleMarkRotated,
+                  onSnoozeRotation: handleSnoozeRotation,
                   projects,
                   showProjectBadge: activeProjectId === 'all',
                   onToggleFavorite: handleToggleFavorite,
@@ -1140,6 +1167,7 @@ export function VaultScreen() {
             item={detailItem}
             projects={projects}
             onMarkRotated={handleMarkRotated}
+            onSnoozeRotation={handleSnoozeRotation}
             isRevealed={detailItem ? revealedItemIds.has(detailItem.id) : false}
             isCopied={detailItem ? copiedId === detailItem.id : false}
             onCopy={handleCopy}

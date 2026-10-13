@@ -19,6 +19,7 @@ import type { ChangePassword } from '../../shared/schemas';
 
 export { hasItem, getAllItems, addItem, editItem, removeItem, removeItems, moveCategoryItems } from './vault/items';
 export { getAllProjects, saveProject, removeProject, moveProjectItems } from './vault/projects';
+export { applyRotationOnEdit } from './vault/rotation';
 export { loadVault, deleteVault, exportVaultRaw, getVaultMetadata } from './vault/storage';
 export { exportVault, importVault } from './vault/backup';
 export { lockVault, getActiveVaultId } from './vault/state';

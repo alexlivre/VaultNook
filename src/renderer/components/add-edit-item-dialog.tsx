@@ -23,16 +23,14 @@ import type { Item, Category } from '../types';
 import { CategoryLabel, Category as CategoryEnum } from '../types';
 import { CategoryIcon } from './category-icon';
 import { TagInput } from './tag-input';
-import { cn, collectTagFrequency } from '../lib/utils';
-
-type RotationMode = 'none' | 'days' | 'date';
-
-function toDateInputValue(timestamp: number): string {
-  const date = new Date(timestamp);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
+import { useToast } from './toast-provider';
+import {
+  cn,
+  collectTagFrequency,
+  dateInputValue,
+  resolveRotationDueAt,
+  type RotationUiMode,
+} from '../lib/utils';
 
 interface AddEditItemDialogProps {
   open: boolean;
@@ -45,6 +43,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
   const projects = useVaultStore((state) => state.projects);
   const items = useVaultStore((state) => state.items);
   const tagFrequency = React.useMemo(() => collectTagFrequency(items), [items]);
+  const { toast } = useToast();
   const [name, setName] = React.useState('');
   const [value, setValue] = React.useState('');
   const [publicKey, setPublicKey] = React.useState('');
@@ -52,10 +51,11 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
   const [category, setCategory] = React.useState<Category>('api');
   const [tags, setTags] = React.useState<string[]>([]);
   const [projectId, setProjectId] = React.useState('');
-  const [rotationMode, setRotationMode] = React.useState<RotationMode>('none');
+  const [rotationMode, setRotationMode] = React.useState<RotationUiMode>('none');
   const [rotationDays, setRotationDays] = React.useState('');
   const [rotationDate, setRotationDate] = React.useState('');
   const [rotationUrl, setRotationUrl] = React.useState('');
+  const [publicKeyHintDismissed, setPublicKeyHintDismissed] = React.useState(false);
   const [generatorOpen, setGeneratorOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -70,6 +70,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       setTags(editItem.tags || []);
       setProjectId(editItem.projectId || '');
       setRotationUrl(editItem.rotationUrl || '');
+      setPublicKeyHintDismissed(!!editItem.publicKeyHintDismissed);
       if (editItem.rotationDueAt > 0 && editItem.rotationIntervalDays > 0) {
         setRotationMode('days');
         setRotationDays(String(editItem.rotationIntervalDays));
@@ -77,7 +78,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       } else if (editItem.rotationDueAt > 0) {
         setRotationMode('date');
         setRotationDays('');
-        setRotationDate(toDateInputValue(editItem.rotationDueAt));
+        setRotationDate(dateInputValue(editItem.rotationDueAt));
       } else {
         setRotationMode('none');
         setRotationDays('');
@@ -103,6 +104,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       setRotationDays('');
       setRotationDate('');
       setRotationUrl('');
+      setPublicKeyHintDismissed(false);
     }
     setError('');
   }, [editItem, open]);
@@ -120,16 +122,12 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       return;
     }
 
-    const days = Number(rotationDays);
-    const rotationIntervalDays = rotationMode === 'days' && days > 0 ? Math.floor(days) : 0;
-    const rotationDueAt =
-      rotationMode === 'days'
-        ? rotationIntervalDays > 0
-          ? Date.now() + rotationIntervalDays * 86400000
-          : 0
-        : rotationMode === 'date' && rotationDate
-          ? new Date(`${rotationDate}T00:00:00`).getTime()
-          : 0;
+    const { rotationDueAt, rotationIntervalDays } = resolveRotationDueAt(
+      editItem ?? null,
+      rotationMode,
+      rotationDays,
+      rotationDate
+    );
 
     setLoading(true);
     try {
@@ -147,6 +145,8 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           rotationDueAt,
           rotationIntervalDays,
           rotationUrl: rotationUrl.trim(),
+          rotationLastAt: editItem.rotationLastAt || 0,
+          publicKeyHintDismissed,
         });
       } else {
         await api.addItem({
@@ -160,11 +160,39 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
           rotationDueAt,
           rotationIntervalDays,
           rotationUrl: rotationUrl.trim(),
+          rotationLastAt: 0,
+          publicKeyHintDismissed,
         });
       }
       // Refresh items from main process
       const items = await api.getItems();
       useVaultStore.getState().setItems(items);
+
+      // Aviso: a privada mudou e a pública continua a mesma (par real × ID fixo)
+      if (
+        editItem &&
+        category === 'keypair' &&
+        publicKey.trim() !== '' &&
+        editItem.value !== value.trim() &&
+        (editItem.publicKey || '') === publicKey.trim() &&
+        !publicKeyHintDismissed
+      ) {
+        const updatedItem = items.find((i) => i.id === editItem.id);
+        if (updatedItem) {
+          toast({
+            title: 'A chave pública continua a mesma',
+            description:
+              'Se este campo for uma chave pública de verdade, considere atualizá-la junto com a privada.',
+            duration: 8000,
+            actionLabel: 'A pública não muda',
+            onAction: async () => {
+              const silenced = await api.editItem({ ...updatedItem, publicKeyHintDismissed: true });
+              useVaultStore.getState().updateItem(silenced);
+            },
+          });
+        }
+      }
+
       onSaved();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar');
@@ -307,6 +335,15 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                   value={publicKey}
                   onChange={(e) => setPublicKey(e.target.value)}
                 />
+                <label className="flex items-center gap-2 pt-0.5 text-xs text-text-muted cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={publicKeyHintDismissed}
+                    onChange={(e) => setPublicKeyHintDismissed(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[var(--color-brass)]"
+                  />
+                  Não avisar quando a chave pública não mudar na rotação
+                </label>
               </div>
             )}
 
@@ -332,7 +369,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                       { value: 'none', label: 'Sem rotação' },
                       { value: 'days', label: 'A cada dias' },
                       { value: 'date', label: 'Em uma data' },
-                    ] as { value: RotationMode; label: string }[]
+                    ] as { value: RotationUiMode; label: string }[]
                   ).map((option) => (
                     <button
                       key={option.value}

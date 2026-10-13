@@ -13,6 +13,7 @@ import {
   CopyPlus,
   Folder,
   FolderInput,
+  CalendarClock,
   RotateCw,
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -48,6 +49,7 @@ interface ItemCardProps {
   projects?: Project[];
   showProjectBadge?: boolean;
   onMarkRotated?: (item: Item) => void;
+  onSnoozeRotation?: (item: Item, days: number) => void;
   onToggleFavorite: (id: string, current: boolean) => void;
   onToggleReveal: (id: string) => void;
   onSelect: (id: string) => void;
@@ -76,6 +78,7 @@ export function ItemCard({
   projects,
   showProjectBadge = false,
   onMarkRotated,
+  onSnoozeRotation,
   onToggleFavorite,
   onToggleReveal,
   onSelect,
@@ -518,6 +521,23 @@ export function ItemCard({
                     {project.name}
                   </DropdownMenuItem>
                 ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
+
+          {onSnoozeRotation && isRotationDue(item) && (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <CalendarClock className="h-3.5 w-3.5 mr-2" />
+                Adiar rotação
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => onSnoozeRotation(item, 3)}>
+                  Por 3 dias
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSnoozeRotation(item, 7)}>
+                  Por 7 dias
+                </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
           )}

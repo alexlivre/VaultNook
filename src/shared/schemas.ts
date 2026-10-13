@@ -31,6 +31,8 @@ export const ItemSchema = z.object({
   rotationDueAt: z.number().default(0),
   rotationIntervalDays: z.number().default(0),
   rotationUrl: z.string().default(''),
+  rotationLastAt: z.number().default(0),
+  publicKeyHintDismissed: z.boolean().default(false),
   favorite: z.boolean().default(false),
   createdAt: z.number(),
   updatedAt: z.number(),
@@ -49,6 +51,8 @@ export const CreateItemSchema = z.object({
   rotationDueAt: z.number().default(0),
   rotationIntervalDays: z.number().default(0),
   rotationUrl: z.string().default(''),
+  rotationLastAt: z.number().default(0),
+  publicKeyHintDismissed: z.boolean().default(false),
 });
 export type CreateItem = z.infer<typeof CreateItemSchema>;
 

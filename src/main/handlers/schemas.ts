@@ -89,6 +89,8 @@ const ImportedItemSchema = z.object({
   rotationDueAt: z.number().optional(),
   rotationIntervalDays: z.number().optional(),
   rotationUrl: z.union([z.string(), EncryptedFieldSchema]).nullish(),
+  rotationLastAt: z.number().optional(),
+  publicKeyHintDismissed: z.boolean().optional(),
   favorite: z.boolean().optional(),
   createdAt: z.number().optional(),
   updatedAt: z.number().optional(),

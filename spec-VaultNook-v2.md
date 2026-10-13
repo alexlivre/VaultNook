@@ -250,6 +250,10 @@ Aplicável às categorias **APIs** e **Chaves**, permite agendar a rotação de 
 | Link de rotação | Campo opcional com o link de onde rotacionar (ex.: dashboard do provedor); o botão "Onde rotacionar" abre no navegador |
 | Alerta | Badge âmbar "Rotacionar" no card quando a data chega; contador "Para rotacionar" na sidebar e busca `is:due` |
 | Marcar como rotacionada | Ação no painel de detalhe e no menu de contexto; com intervalo recalcula a próxima data, sem intervalo limpa o alerta |
+| Detecção automática | Trocar o valor da credencial (o segredo) registra a rotação sozinho: reagenda pelo intervalo ou limpa o alerta; a chave pública **não** entra na detecção |
+| Adiar (snooze) | "Adiar rotação" por 3 ou 7 dias — disponível apenas quando a entrada está com alerta |
+| Aviso da chave pública | Ao rotacionar só a privada e manter a pública igual, um aviso sugere conferir a pública; pode ser silenciado por entrada (reversível pelo diálogo) |
+| Última rotação | Registro da data da última rotação efetiva, exibido no painel de detalhe |
 | Revisão inicial única | Ao abrir pela primeira vez um cofre de versão anterior, todas as APIs/Chaves existentes recebem o alerta uma única vez (marcador persistido impede repetição em versões futuras) |
 
 ### 2.12 Segurança
@@ -440,6 +444,7 @@ Aplicável às categorias **APIs** e **Chaves**, permite agendar a rotação de 
 
 | Data | Versão | Descrição |
 |------|--------|-----------|
+| 2026-10-13 | v6 | Rotação v2: detecção automática ao trocar o valor, snooze (+3/+7), aviso da chave pública com silêncio por entrada e registro de última rotação |
 | 2026-10-13 | v5 | Rotação de credenciais (§2.11) com data/dias, link, alerta e revisão inicial única; sugestões de tags no diálogo (§2.2) |
 | 2026-10-13 | v4 | Sincronização com o estado atual do app: 6ª categoria (Chaves), navegação em sidebar, Projetos (pastas) em §2.6, busca ampliada (`tag:`, `proj:`, `is:fav`), criptografia por campo em todas as categorias e roadmap atualizado |
 | 2026-06-07 | v3 | Especificação revisada com melhorias de UX: favoritos, busca global, paleta de comandos, multi-select, biometria, frase de recuperação, autolock configurável, painel deslizante, animações, e reorganização de prioridades |

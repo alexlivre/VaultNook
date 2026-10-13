@@ -14,6 +14,8 @@ const makeItem = (overrides: Partial<Item> = {}): Item => ({
   rotationDueAt: 0,
   rotationIntervalDays: 0,
   rotationUrl: '',
+  rotationLastAt: 0,
+  publicKeyHintDismissed: false,
   favorite: false,
   createdAt: 1000,
   updatedAt: 1000,
