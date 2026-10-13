@@ -49,7 +49,7 @@
 | **Busca por sintaxe** | `cat:api`, `tag:prod`, `proj:cliente`, `is:fav` e `is:due` para filtrar |
 | **Gerador de senhas** | Crie senhas fortes diretamente no app |
 | **Multi-select** | Selecione vários itens para ações em lote |
-| **Valores mascarados** | APIs e chaves privadas aparecem ocultas por padrão — revele quando precisar |
+| **Valores mascarados** | APIs, chave privada e chave pública aparecem ocultas por padrão — revele quando precisar |
 | **Menu de contexto** | Clique direito para ações rápidas |
 | **Desfazer exclusão** | Restaure item excluído em até 5 segundos |
 

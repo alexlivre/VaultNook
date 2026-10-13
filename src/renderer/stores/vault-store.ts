@@ -30,6 +30,7 @@ interface VaultState {
   isSearching: boolean;
   selectedItemIds: Set<string>;
   revealedItemIds: Set<string>;
+  revealedPublicKeyIds: Set<string>;
 
   // Session
   autoLockTimer: AutoLockOption;
@@ -56,6 +57,7 @@ interface VaultState {
   setSortOption: (sort: SortOption) => void;
   toggleFavorite: (id: string) => void;
   toggleReveal: (id: string) => void;
+  togglePublicKeyReveal: (id: string) => void;
   toggleItemSelection: (id: string) => void;
   selectAllItems: () => void;
   clearSelection: () => void;
@@ -89,6 +91,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
   isSearching: false,
   selectedItemIds: new Set(),
   revealedItemIds: new Set(),
+  revealedPublicKeyIds: new Set(),
 
   // Session
   autoLockTimer: 60,
@@ -163,6 +166,16 @@ export const useVaultStore = create<VaultState>((set, get) => ({
         newSet.add(id);
       }
       return { revealedItemIds: newSet };
+    }),
+  togglePublicKeyReveal: (id) =>
+    set((state) => {
+      const newSet = new Set(state.revealedPublicKeyIds);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return { revealedPublicKeyIds: newSet };
     }),
   toggleItemSelection: (id) =>
     set((state) => {

@@ -174,6 +174,7 @@ export function VaultScreen() {
     sortOption,
     selectedItemIds,
     revealedItemIds,
+    revealedPublicKeyIds,
     activeVaultName,
     setActiveCategory,
     setSearchQuery,
@@ -181,6 +182,7 @@ export function VaultScreen() {
     setSortOption,
     toggleFavorite,
     toggleReveal,
+    togglePublicKeyReveal,
     toggleItemSelection,
     clearSelection,
     removeItem,
@@ -1169,6 +1171,8 @@ export function VaultScreen() {
             onMarkRotated={handleMarkRotated}
             onSnoozeRotation={handleSnoozeRotation}
             isRevealed={detailItem ? revealedItemIds.has(detailItem.id) : false}
+            isPublicKeyRevealed={detailItem ? revealedPublicKeyIds.has(detailItem.id) : false}
+            onTogglePublicKeyReveal={togglePublicKeyReveal}
             isCopied={detailItem ? copiedId === detailItem.id : false}
             onCopy={handleCopy}
             onEdit={setEditItem}

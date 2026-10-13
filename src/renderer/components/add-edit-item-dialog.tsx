@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { KeyRound, KeySquare, Dice5, Folder, RotateCw, Tag } from 'lucide-react';
+import { KeyRound, KeySquare, Dice5, Eye, EyeOff, Folder, RotateCw, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
   const [rotationDate, setRotationDate] = React.useState('');
   const [rotationUrl, setRotationUrl] = React.useState('');
   const [publicKeyHintDismissed, setPublicKeyHintDismissed] = React.useState(false);
+  const [publicKeyVisible, setPublicKeyVisible] = React.useState(false);
   const [generatorOpen, setGeneratorOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -105,6 +106,7 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
       setRotationDate('');
       setRotationUrl('');
       setPublicKeyHintDismissed(false);
+      setPublicKeyVisible(false);
     }
     setError('');
   }, [editItem, open]);
@@ -204,15 +206,16 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md flex max-h-[calc(100vh_-_2rem)] flex-col overflow-hidden gap-3">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{editItem ? 'Editar item' : 'Novo item'}</DialogTitle>
             <DialogDescription>
               {editItem ? 'Modifique os campos abaixo' : 'Adicione um novo item ao cofre'}
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
             {/* Category */}
             <div className="space-y-2">
               <Label>Categoria</Label>
@@ -328,13 +331,30 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
             {category === 'keypair' && (
               <div className="space-y-2">
                 <Label htmlFor="item-public-key">Chave pública (opcional)</Label>
-                <Input
-                  id="item-public-key"
-                  type="text"
-                  placeholder="Chave pública"
-                  value={publicKey}
-                  onChange={(e) => setPublicKey(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="item-public-key"
+                    type={publicKeyVisible ? 'text' : 'password'}
+                    placeholder="Chave pública"
+                    value={publicKey}
+                    onChange={(e) => setPublicKey(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    onClick={() => setPublicKeyVisible((v) => !v)}
+                    title={publicKeyVisible ? 'Ocultar chave pública' : 'Revelar chave pública'}
+                  >
+                    {publicKeyVisible ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 <label className="flex items-center gap-2 pt-0.5 text-xs text-text-muted cursor-pointer">
                   <input
                     type="checkbox"
@@ -443,25 +463,28 @@ export function AddEditItemDialog({ open, onOpenChange, editItem, onSaved }: Add
                 Este valor e suas tags serão criptografados ao salvar
               </p>
             )}
+            </div>
 
-            {error && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2">
-                <p className="text-xs text-destructive">{error}</p>
+            <div className="shrink-0 space-y-2 border-t border-border-default pt-3">
+              {error && (
+                <div className="rounded-md bg-destructive/10 border border-destructive/30 p-2">
+                  <p className="text-xs text-destructive">{error}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={loading}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" variant="primary" disabled={loading}>
+                  {loading ? 'Salvando...' : editItem ? 'Salvar' : 'Adicionar'}
+                </Button>
               </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? 'Salvando...' : editItem ? 'Salvar' : 'Adicionar'}
-              </Button>
             </div>
           </form>
         </DialogContent>

@@ -96,7 +96,7 @@ O sistema possui **6 categorias fixas** com identificação por cor:
 | Prompts | Azul | MessageSquareText | Valor criptografado; exibido com prévia truncada e diálogo expandido |
 | Commands | Verde (esmeralda) | Terminal | Valor criptografado; parâmetros `{{...}}` preenchíveis via diálogo |
 | Links | Rosa | Link | Valor criptografado; abre no navegador externo |
-| Chaves | Ciano (#06b6d4) | KeySquare | Par público/privado criptografado; chave privada mascarada por padrão |
+| Chaves | Ciano (#06b6d4) | KeySquare | Par público/privado criptografado; chave privada **e chave pública** mascaradas por padrão, com botão de revelar dedicado |
 
 As categorias são apresentadas na **navegação lateral (sidebar)** da tela principal, cada uma com sua cor e um **contador de itens**; a categoria ativa fica destacada.
 

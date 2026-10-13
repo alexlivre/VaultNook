@@ -233,4 +233,19 @@ describe('vault store filteredItems', () => {
       expect(ids()).toEqual(['due']);
     });
   });
+
+  describe('public key reveal', () => {
+    it('togglePublicKeyReveal is independent from the private reveal', () => {
+      useVaultStore.setState({ revealedItemIds: new Set(), revealedPublicKeyIds: new Set() });
+
+      useVaultStore.getState().togglePublicKeyReveal('a');
+      let state = useVaultStore.getState();
+      expect(state.revealedPublicKeyIds.has('a')).toBe(true);
+      expect(state.revealedItemIds.has('a')).toBe(false);
+
+      useVaultStore.getState().togglePublicKeyReveal('a');
+      state = useVaultStore.getState();
+      expect(state.revealedPublicKeyIds.has('a')).toBe(false);
+    });
+  });
 });

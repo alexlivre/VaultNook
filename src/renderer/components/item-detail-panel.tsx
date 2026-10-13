@@ -32,6 +32,8 @@ interface ItemDetailPanelProps {
   onMarkRotated?: (item: Item) => void;
   onSnoozeRotation?: (item: Item, days: number) => void;
   isRevealed: boolean;
+  isPublicKeyRevealed: boolean;
+  onTogglePublicKeyReveal: (id: string) => void;
   isCopied: boolean;
   onCopy: (value: string, itemId: string) => void;
   onEdit: (item: Item) => void;
@@ -50,6 +52,8 @@ export function ItemDetailPanel({
   onMarkRotated,
   onSnoozeRotation,
   isRevealed,
+  isPublicKeyRevealed,
+  onTogglePublicKeyReveal,
   isCopied,
   onCopy,
   onEdit,
@@ -208,17 +212,36 @@ export function ItemDetailPanel({
               Chave pública
             </p>
             <div className="rounded-lg border border-border-default bg-black/40 p-3 font-secret text-xs leading-relaxed break-all text-text-primary select-text">
-              {item.publicKey}
+              {isPublicKeyRevealed ? item.publicKey : maskValue(item.publicKey)}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 h-8 w-full text-xs"
-              onClick={() => onCopy(item.publicKey, item.id)}
-            >
-              <Copy className="h-3.5 w-3.5 mr-1.5" />
-              Copiar chave pública
-            </Button>
+            <div className="mt-2 flex gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 flex-1 text-xs"
+                onClick={() => onCopy(item.publicKey, item.id)}
+              >
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                Copiar chave pública
+              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => onTogglePublicKeyReveal(item.id)}
+                  >
+                    {isPublicKeyRevealed ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{isPublicKeyRevealed ? 'Ocultar' : 'Revelar'}</TooltipContent>
+              </Tooltip>
+            </div>
           </>
         )}
 
