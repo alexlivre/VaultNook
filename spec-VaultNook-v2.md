@@ -66,7 +66,8 @@ VaultNook é um cofre digital pessoal que permite ao usuário:
 | Excluir item | Confirmação com AlertDialog; toast com opção "Desfazer" por 5 segundos |
 | Copiar valor | Botão de cópia em cada card; duplo clique no card também copia |
 | Visualizar valor | Prévia truncada (60px); valores de API aparecem mascarados por padrão com botão de revelar |
-| Menu de contexto | Clique direito no item abre menu: Copiar valor, Copiar nome, Copiar como JSON, Editar, Excluir |
+| Tags | Etiquetas livres por item (Enter ou vírgula para adicionar); filtro na sidebar e busca `tag:` |
+| Menu de contexto | Clique direito no item abre menu: Copiar valor, Copiar nome, Copiar como JSON, Mover categoria/projeto, Editar, Excluir |
 | Gerador de senhas | Ícone de dado ao lado do campo "Valor" na categoria APIs — gera senha forte aleatória |
 | Favoritar item | Estrela no card permite marcar/desmarcar como favorito |
 | Filtro de favoritos | Alternância "Favoritos primeiro" no topo da lista |
@@ -86,17 +87,18 @@ VaultNook é um cofre digital pessoal que permite ao usuário:
 
 ### 2.3 Categorias
 
-O sistema possui **5 categorias fixas** com identificação por cor:
+O sistema possui **6 categorias fixas** com identificação por cor:
 
 | Categoria | Cor | Ícone | Comportamento do valor |
 |-----------|-----|-------|------------------------|
 | Todos (All) | Roxo (violeta) | LayoutGrid | Exibe itens de todas as categorias |
-| APIs | Âmbar | KeyRound | Valor é criptografado (dados sensíveis); mascarado por padrão |
-| Prompts | Azul | MessageSquareText | Valor armazenado em texto puro |
-| Commands | Verde (esmeralda) | Terminal | Valor armazenado em texto puro |
-| Links | Rosa | Link | Valor armazenado em texto puro |
+| APIs | Âmbar | KeyRound | Valor criptografado; mascarado por padrão com botão de revelar |
+| Prompts | Azul | MessageSquareText | Valor criptografado; exibido com prévia truncada e diálogo expandido |
+| Commands | Verde (esmeralda) | Terminal | Valor criptografado; parâmetros `{{...}}` preenchíveis via diálogo |
+| Links | Rosa | Link | Valor criptografado; abre no navegador externo |
+| Chaves | Ciano (#06b6d4) | KeySquare | Par público/privado criptografado; chave privada mascarada por padrão |
 
-As categorias são apresentadas como abas clicáveis no topo da tela principal. Cada aba exibe um **contador de itens**. A aba ativa possui indicador visual (linha inferior animada na cor da categoria). Ao trocar de aba, o conteúdo faz transição suave (crossfade).
+As categorias são apresentadas na **navegação lateral (sidebar)** da tela principal, cada uma com sua cor e um **contador de itens**; a categoria ativa fica destacada.
 
 ### 2.4 Busca
 
@@ -104,7 +106,7 @@ As categorias são apresentadas como abas clicáveis no topo da tela principal. 
 |---------------|-----------|
 | Busca global | Filtra itens em **todas as categorias** por padrão (não apenas na categoria ativa) |
 | Filtro por categoria | Ao buscar, resultados mostram badge com a cor da categoria de cada item |
-| Busca por sintaxe | `cat:api stripe` busca "stripe" apenas na categoria APIs |
+| Busca por sintaxe | `cat:api`, `tag:prod`, `proj:cliente` e `is:fav` filtram por categoria, tag, projeto e favoritos; o restante do texto busca nome, descrição e tags |
 | Filtros ativos | Abaixo da barra de busca, pills clicáveis mostram filtros ativos — [ "stripe" ] [ ✕ APIs ] |
 | Atalho de teclado | Ctrl+F ou Cmd+K foca a busca |
 | Paleta de comandos | Cmd+K abre paleta que busca itens + oferece ações rápidas: "Adicionar item", "Exportar", "Travar" |
@@ -118,7 +120,20 @@ As categorias são apresentadas como abas clicáveis no topo da tela principal. 
 - Quando bloqueado, itens da categoria APIs aparecem com valor oculto
 - Ordenação padrão: favoritos primeiro, depois por data de criação (mais recentes primeiro)
 
-### 2.6 Gestão do Cofre
+### 2.6 Projetos (pastas)
+
+Permite separar credenciais por projeto dentro do mesmo cofre — ex.: uma chave Google para cada cliente, várias credenciais de projetos Cloudflare.
+
+| Funcionalidade | Descrição |
+|---------------|-----------|
+| Criar/editar projeto | Nome + cor de identificação; o nome é criptografado no arquivo do cofre (AES-256-GCM) |
+| Filtrar na sidebar | "Todos os projetos", "Sem projeto" e cada projeto, com contador de itens |
+| Buscar por projeto | `proj:<nome>` filtra por projeto; `proj:none` mostra os itens sem projeto |
+| Mover itens | Menu de contexto (clique direito), ações em lote e campo "Projeto" na edição; item novo herda o projeto ativo |
+| Badge no card | Na visão global ("Todos os projetos"), o card exibe o projeto do item |
+| Excluir projeto | Requer confirmação e **nunca apaga itens**: eles são movidos para "Sem projeto" |
+
+### 2.7 Gestão do Cofre
 
 Acessada através de um painel deslizante (slide-over) à direita, não de um menu dropdown.
 
@@ -133,7 +148,7 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 
 **Zona de perigo:** As ações destrutivas (excluir cofre) são visualmente separadas das demais, com cor vermelha e espaçamento extra.
 
-### 2.7 Backup e Restauração
+### 2.8 Backup e Restauração
 
 | Funcionalidade | Descrição |
 |---------------|-----------|
@@ -142,7 +157,7 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 | Contagem | Exibe quantos itens foram exportados, importados e ignorados (duplicatas) |
 | Atalho | Ctrl+E para exportar |
 
-### 2.8 Interface Visual
+### 2.9 Interface Visual
 
 **Sistema de cores (tema escuro):**
 
@@ -212,7 +227,7 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 | Desbloqueio do cofre | Animação "decrypting..." com itens aparecendo em cascata | 400ms |
 | Limpar busca | Botão "X" aparece com fade quando há texto | 100ms |
 
-### 2.9 Atalhos de Teclado
+### 2.10 Atalhos de Teclado
 
 | Atalho | Ação |
 |--------|------|
@@ -225,12 +240,12 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 | Esc | Fechar diálogos / limpar seleção |
 | Delete | Excluir item(s) selecionado(s) |
 
-### 2.10 Segurança
+### 2.11 Segurança
 
 | Funcionalidade | Descrição |
 |---------------|-----------|
 | Hash de senha | Senha mestra protegida com algoritmo de derivação de chave (PBKDF2) com alto número de iterações |
-| Criptografia | Valores da categoria APIs são criptografados individualmente com AES-256-GCM |
+| Criptografia | Cada campo (nome, valor, descrição, tags e nomes de projetos) é criptografado individualmente com AES-256-GCM, com IV único por campo |
 | IV único | Cada item criptografado possui seu próprio vetor de inicialização |
 | Chave em memória | Chave criptográfica armazenada em buffer mutável (permite zeroização ao travar) |
 | Zeroização | Ao travar o cofre, a chave criptográfica é sobrescrita na memória |
@@ -243,7 +258,7 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 
 ## 3. Funcionalidades Planejadas
 
-### 3.1 Versão 0.2.x — Múltiplos Cofres
+### 3.1 Versão 0.2.x — Múltiplos Cofres ✅ (implementado)
 
 | Funcionalidade | Descrição |
 |---------------|-----------|
@@ -258,10 +273,9 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 
 | Funcionalidade | Descrição |
 |---------------|-----------|
-| Projetos (pastas) | Agrupar credenciais por projeto (nome + cor); filtro na sidebar, busca `proj:<nome>`, mover itens em lote e exclusão que realoca os itens para "Sem projeto" |
-| Tags/Labels | Adicionar tags personalizáveis aos itens para filtragem |
 | Categorias personalizáveis | Criar, renomear e excluir categorias |
-| Arrastar e soltar | Mover itens entre categorias por drag-and-drop |
+| Arrastar e soltar | Mover itens entre categorias/projetos por drag-and-drop |
+| Subpastas de projetos | Aninhar projetos (ex.: Cliente > Site) |
 
 ### 3.3 Versão 0.4.x — Sincronização e Portabilidade
 
@@ -414,5 +428,6 @@ Acessada através de um painel deslizante (slide-over) à direita, não de um me
 
 | Data | Versão | Descrição |
 |------|--------|-----------|
+| 2026-10-13 | v4 | Sincronização com o estado atual do app: 6ª categoria (Chaves), navegação em sidebar, Projetos (pastas) em §2.6, busca ampliada (`tag:`, `proj:`, `is:fav`), criptografia por campo em todas as categorias e roadmap atualizado |
 | 2026-06-07 | v3 | Especificação revisada com melhorias de UX: favoritos, busca global, paleta de comandos, multi-select, biometria, frase de recuperação, autolock configurável, painel deslizante, animações, e reorganização de prioridades |
 | 2026-06-07 | v2 | Especificação consolidada de todos os recursos atuais e planejados |

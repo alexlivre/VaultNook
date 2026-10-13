@@ -11,6 +11,34 @@ qualidade — sem adicionar recursos.
 | `npm run lint` | limpo |
 | `npm run test:run` | 41 testes, 5 arquivos, 0 falhas (~14,6 s) |
 
+**Atualização de status — 2026-10-13** (reavaliação dos achados; o corpo do relatório permanece como registro do baseline)
+
+Novo baseline: `tsc --noEmit` limpo, `lint` limpo, `npm run test:run` → **77 testes, 7 arquivos, 0 falhas (~1,5 s)**.
+
+| Achado | Status atual |
+|---|---|
+| 1.1 Sobrescrita de cofre na criação | ✅ corrigido — `createVault` sempre gera id novo, `lockVault` limpa `activeVaultId`; coberto por teste de isolamento em `vault.test.ts` |
+| 1.2 Atalhos de teclado mortos | ✅ corrigido — `useKeyboardShortcuts` registra o listener internamente (handler em `ref`) |
+| 1.3 Auto-lock inconsistente | ✅ corrigido — roteia para o cofre ativo (unlock) ou para o gerenciador |
+| 1.4 `loadVault` sem zeroizar | ✅ corrigido — `key?.zeroize()` antes de anular |
+| 1.5 Desfazer exclusão gera novo id | ✅ corrigido — `ADD_ITEM` preserva o id quando está livre |
+| 1.6 `clipboard.clear()` total | ✅ corrigido — `CLEAR_CLIPBOARD` só limpa se o conteúdo ainda for o esperado |
+| 1.7 Listeners re-registrados por atividade | ✅ resolvido no mesmo refactor do 1.2 |
+| 2.1 PBKDF2 duplicado | ✅ corrigido — 1 derivação por operação; `VITEST` reduz iterações (suíte ~1,5 s) |
+| 2.2 Validação Zod duplicada | ⚠️ parcial — schemas agora compartilhados em `src/shared/schemas.ts`; preload e main ainda validam o mesmo payload |
+| 2.3 `main` importando de `renderer/types` | ✅ corrigido — `src/shared/` criado para schemas e canais |
+| 2.4 Canais IPC inline | ✅ corrigido — tudo em `src/shared/ipc-channels.ts` |
+| 2.5/2.6 Duplicações de helpers/UI | ⚠️ parcial — helpers de tempo unificados em `utils.ts` e `CategoryIcon` extraído; duplicações menores persistem |
+| 3. Código morto | ✅ removido (verificado por busca; resta apenas `CategoryColorName` sem uso em `renderer/types`) |
+| 4. Performance | ✅ principais endereçados — `ResizeObserver`, contadores em uma passada, ACL com cache, iterações de teste reduzidas |
+| 5. Arquitetura | ✅ `vault.ts` dividido em `services/vault/*`, schemas de handler extraídos, envelope de erro IPC (`{ ok, code, message }`), `strict` ligado, `allowJs` removido |
+| 6. Segurança | ⚠️ principal endereçado — `ImportedVaultSchema` valida a forma dos itens e a CSP já tem `object-src 'none'`/`base-uri 'self'`; pendência: aviso explícito ao salvar a frase de recuperação |
+| 7. Testes — lacunas | ✅ parser de busca, ações do store, migração e a regressão 1.1 cobertos; validação de payloads IPC com cobertura parcial (`schemas.test.ts`) |
+
+Desde o baseline também entraram: **Projetos (pastas)** por cofre com nomes criptografados, nome do cofre no arquivo de backup sugerido e a categoria **Chaves** (par público/privado).
+
+---
+
 O código está em bom estado geral: separação de processos correta, criptografia
 sólida, testes reais e CSP fechada. Os itens abaixo são, em sua maioria,
 dívidas técnicas e alguns bugs reais — dois deles com potencial de perda de dados.

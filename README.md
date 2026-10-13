@@ -43,8 +43,9 @@
 | **Projetos (pastas)** | Separe credenciais por projeto (nome + cor), filtre na sidebar e mova itens em lote |
 | **Cópia explícita** | Botão de copiar, menu de contexto ou `Enter` — clique no card não copia |
 | **Favoritos** | Marque itens importantes e filtre por estes |
+| **Tags** | Etiquete itens e filtre pela sidebar ou por `tag:prod` |
 | **Busca global** | Pesquise em todas as categorias de uma vez |
-| **Busca por sintaxe** | `cat:api stripe` para filtrar por categoria e `proj:cliente` por projeto |
+| **Busca por sintaxe** | `cat:api`, `tag:prod`, `proj:cliente` e `is:fav` para filtrar |
 | **Gerador de senhas** | Crie senhas fortes diretamente no app |
 | **Multi-select** | Selecione vários itens para ações em lote |
 | **Valores mascarados** | APIs e chaves privadas aparecem ocultas por padrão — revele quando precisar |
@@ -62,7 +63,7 @@
 | **Exportar cofre** | Exporte qualquer cofre sem precisar desbloquear |
 | **Excluir cofre** | Remove permanentemente o cofre (requer senha) |
 | **Dica de senha** | Cadastre e visualize dicas na tela de desbloqueio |
-| **Exportar backup** | Salva cofre completo em JSON (metadados + itens criptografados) |
+| **Exportar backup** | Salva cofre completo em JSON (metadados + itens criptografados); o nome sugerido inclui o cofre e o timestamp |
 | **Importar backup** | Restaura a partir de JSON, mesclando com existentes |
 | **Informações do cofre** | Estatísticas: total de itens, por categoria, versão |
 | **Exclusão segura** | Remove permanentemente todos os dados (requer senha) |
@@ -72,7 +73,8 @@
 | Funcionalidade | Descrição |
 |---------------|-----------|
 | **Tema escuro profissional** | Design system completo com cores, elevação e espaçamento |
-| **Abas coloridas** | Cada categoria com sua cor de identificação |
+| **Navegação lateral** | Sidebar com projetos, categorias, favoritos e tags — cada categoria com sua cor |
+| **Painel de detalhe** | Detalhes do item selecionado com ações de copiar, revelar, editar e excluir |
 | **Paleta de comandos** | Ctrl+K para ações rápidas e busca de itens |
 | **Notificações toast** | Feedback visual com opção de "Desfazer" |
 | **Estados vazios** | Mensagens contextuais para cada situação |
@@ -169,38 +171,44 @@ src/
 ├── main.ts                          # Processo principal Electron
 ├── preload.ts                       # Ponte segura IPC com Zod
 ├── renderer.tsx                     # Entry point React
-├── ipc-channels.ts                  # Canais IPC compartilhados
+├── global.d.ts                      # Tipos expostos pelo preload
+├── shared/
+│   ├── schemas.ts                   # Schemas Zod compartilhados (item, projeto, payloads)
+│   └── ipc-channels.ts              # Canais IPC compartilhados
 ├── main/
-│   ├── handlers/ipc-handlers.ts     # 22 handlers IPC validados
+│   ├── handlers/
+│   │   ├── ipc-handlers.ts          # 34 handlers IPC validados
+│   │   └── schemas.ts               # Schemas de validação dos handlers
 │   └── services/
 │       ├── crypto.ts                # PBKDF2, AES-256-GCM, zeroização
-│       ├── vault.ts                 # CRUD, backup, troca de senha, criptografia total
-│       └── vault-registry.ts        # Registro de múltiplos cofres
+│       ├── fs-utils.ts              # Escrita atômica, ACL, sanitizeFileName
+│       ├── legacy-user-data.ts      # Migração do perfil DevVault → VaultNook
+│       ├── vault-registry.ts        # Registro de múltiplos cofres
+│       ├── vault.ts                 # Fachada do cofre
+│       └── vault/                   # state, storage, key, items, projects, backup, migration
 ├── renderer/
 │   ├── App.tsx                      # Roteamento de telas
-│   ├── types/index.ts               # Schemas Zod + tipos
+│   ├── types/index.ts               # Reexporta schemas + rótulos de categoria
 │   ├── stores/vault-store.ts        # Estado global (Zustand)
 │   ├── lib/
-│   │   ├── utils.ts                 # Helpers (máscara, senha, data)
+│   │   ├── utils.ts                 # Helpers (máscara, senha, data, auditoria)
 │   │   └── hooks.ts                 # Auto-lock, atalhos de teclado
 │   ├── components/
-│   │   ├── ui/                      # 10+ componentes base
-│   │   ├── add-edit-item-dialog.tsx  # CRUD com gerador de senha
+│   │   ├── ui/                      # 13 componentes base (Radix/shadcn)
+│   │   ├── add-edit-item-dialog.tsx # CRUD com projeto, tags e gerador de senha
+│   │   ├── item-card.tsx            # Card com menu de contexto
+│   │   ├── item-detail-panel.tsx    # Painel de detalhe lateral
+│   │   ├── project-dialog.tsx       # Criar/editar projeto (pasta)
 │   │   ├── command-palette.tsx      # Paleta de comandos funcional
-│   │   ├── error-boundary.tsx       # Error Boundary React
-│   │   ├── item-card.tsx            # Card de item extraído
 │   │   ├── vault-settings-sheet.tsx # Painel de configurações
-│   │   ├── vault-toolbar.tsx        # Toolbar de busca extraída
-│   │   ├── toast-provider.tsx       # Sistema de notificações
-│   │   └── window-controls.tsx      # Botões de janela customizados
+│   │   └── ...                      # toolbar, auditoria, diálogos, toasts
 │   └── pages/
 │       ├── vault-manager-screen.tsx     # Seleção de cofres
 │       ├── create-password-screen.tsx   # Criação de senha + dica
-│       ├── unlock-screen.tsx            # Desbloqueio com dica
+│       ├── unlock-screen.tsx            # Desbloqueio (e frase de migração)
+│       ├── recovery-screen.tsx          # Recuperação por frase
 │       └── vault-screen.tsx             # Tela principal
-└── __tests__/
-    ├── crypto.test.ts               # Testes de criptografia (11)
-    └── vault.test.ts                # Testes de vault CRUD (8)
+└── __tests__/                       # 7 suítes / 77 testes (Vitest)
 ```
 
 ---
@@ -218,11 +226,11 @@ Senha mestra / Frase BIP39
         └──► chave de embrulho ──► AES-GCM ──► Chave-mestra (256 bits, em memória)
                                                      │
                                                      ▼
-                        AES-256-GCM por campo (nome, valor, descrição)
+                        AES-256-GCM por campo (nome, valor, descrição, tags, projetos)
 ```
 
-- **Chave-mestra de 256 bits** gerada aleatoriamente por cofre; criptografa nome, valor e
-  descrição de cada item com AES-256-GCM (IV único por campo).
+- **Chave-mestra de 256 bits** gerada aleatoriamente por cofre; criptografa nome, valor,
+  descrição, tags e **nomes de projetos** com AES-256-GCM (IV único por campo).
 - A chave-mestra é protegida por duas "cápsulas" (`masterKeyWrap` e `recoveryKeyWrap`):
   uma derivada da **senha mestra** e outra da **frase de recuperação BIP39** (12 palavras).
 - **Trocar a senha** apenas re-embrulha a chave-mestra — nada é re-criptografado.
@@ -240,13 +248,16 @@ Senha mestra / Frase BIP39
 
 ### v0.1.0 ✅ (atual)
 - ✅ Autenticação com senha mestra
-- ✅ CRUD de itens com 4 categorias
+- ✅ CRUD de itens com 6 categorias (incl. par de chaves público/privado)
 - ✅ Criptografia AES-256-GCM (todas categorias, formatVersion 3 com chave-mestra)
 - ✅ Comparação segura com timingSafeEqual
-- ✅ Busca global com sintaxe `cat:`
+- ✅ Busca global com sintaxe `cat:`, `tag:`, `proj:` e `is:fav`
 - ✅ Projetos (pastas) para separar credenciais por projeto
 - ✅ Favoritos e multi-select
+- ✅ Tags e labels por item
 - ✅ Export/Import JSON (backup completo)
+- ✅ Nome sugerido de backup com o cofre e a data
+- ✅ Migração automática de cofres antigos (v1/v2 → v3)
 - ✅ Auto-lock configurável
 - ✅ Paleta de comandos funcional com busca
 - ✅ Desfazer exclusão (5 segundos)
@@ -257,13 +268,12 @@ Senha mestra / Frase BIP39
 - ✅ Dica de senha
 - ✅ Botões de janela customizados
 - ✅ Error Boundary React
-- ✅ Testes automatizados (Vitest, 21 testes)
+- ✅ Testes automatizados (Vitest, 7 suítes / 77 testes)
 
 ### v0.2.0 🔜
-- Tags e labels personalizáveis
-- Categorias customizáveis
+- Categorias personalizáveis
 - Arrastar e soltar itens
-- Migração automática de cofres antigos
+- Subpastas dentro de projetos
 
 ### v0.3.0
 - Sincronização via Dropbox/OneDrive
