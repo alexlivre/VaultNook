@@ -5,6 +5,7 @@ import { join } from 'path';
 import { z } from 'zod';
 import * as vault from '../services/vault';
 import * as registry from '../services/vault-registry';
+import { sanitizeFileName } from '../services/fs-utils';
 import { IPC_CHANNELS } from '../../shared/ipc-channels';
 import {
   ChangePasswordSchema,
@@ -214,9 +215,13 @@ export function registerIpcHandlers(): void {
 
   handle(IPC_CHANNELS.EXPORT, async () => {
     const data = await vault.exportVault();
+    const activeId = vault.getActiveVaultId();
+    const entry = activeId ? await registry.getVault(activeId) : undefined;
+    const safeName = entry?.name ? sanitizeFileName(entry.name) : '';
+    const namePart = safeName ? `-${safeName}` : '';
     const result = await dialog.showSaveDialog({
       title: 'Exportar Vault',
-      defaultPath: `vaultnook-backup-${Date.now()}.json`,
+      defaultPath: `vaultnook-backup${namePart}-${Date.now()}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {
@@ -243,9 +248,12 @@ export function registerIpcHandlers(): void {
     const id = validate(IdSchema, vaultId);
     const raw = await vault.exportVaultRaw(id);
     if (!raw) throw new Error('Vault não encontrado');
+    const entry = await registry.getVault(id);
+    const safeName = entry?.name ? sanitizeFileName(entry.name) : '';
+    const namePart = safeName ? `-${safeName}` : '';
     const result = await dialog.showSaveDialog({
       title: 'Exportar Vault',
-      defaultPath: `vaultnook-export-${Date.now()}.json`,
+      defaultPath: `vaultnook-export${namePart}-${Date.now()}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {

@@ -4,6 +4,14 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
+export function sanitizeFileName(name: string): string {
+  return name
+    .replace(/[<>:"/\\|?*\p{Cc}]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[. ]+$/, '');
+}
+
 export async function atomicWriteFile(filePath: string, data: string): Promise<void> {
   const tmpPath = `${filePath}.tmp`;
   await writeFile(tmpPath, data, 'utf-8');
